@@ -8,7 +8,7 @@ plugins {
 
 group = "com.maruhxn"
 version = "0.0.1-SNAPSHOT"
-description = "flux"
+description = "fflux"
 
 java {
     toolchain {

@@ -1,10 +1,10 @@
-package com.maruhxn.flux
+package com.maruhxn.fflux
 
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
 
 @SpringBootTest
-class FluxApplicationTests {
+class FfluxApplicationTests {
 
     @Test
     fun contextLoads() {

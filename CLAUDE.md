@@ -1,4 +1,4 @@
-# FLUX
+# FFLUX
 
 치지직 같은 실시간 라이브 방송 웹 서비스. PC 화면 공유 송출, 모바일 카메라 송출, 시청, 방송 관리, 인증·인가가 필수이고 채팅·댓글·후원·녹화/다시보기가 선택이다. 요구사항 원문은 `요구사항명세서.md`, 모든 설계 결정과 그 이유는 `docs/decisions.md`에 있다. 결정과 다르게 구현해야 할 상황이면 먼저 사용자에게 묻고, 합의되면 `docs/decisions.md`와 해당 rule을 함께 고친다.
 
@@ -9,7 +9,7 @@
 - `client/`: React + Vite + TypeScript, React Router, TanStack Query, Tailwind CSS. 반응형 SPA 하나로 PC와 모바일을 모두 지원한다(네이티브 앱 없음).
 - `server/`: Kotlin + Spring Boot, Gradle 멀티모듈 모듈러 모놀리스. MySQL 8, Spring Data JPA, Spring Security 세션 + Spring Session JDBC.
 - 미디어: MediaMTX 셀프호스팅. 송출 WHIP, 시청 WHEP(실패 시 HLS 폴백), 녹화 fMP4 → faststart MP4.
-- 배포: VM 1대 + Docker Compose(Spring, MySQL, MediaMTX, Caddy). Caddy가 HTTPS와 same-origin 라우팅을 맡는다(`/api` → Spring, `/media` → MediaMTX).
+- 배포: AWS VM 1대 + Docker Compose(Spring, MySQL, MediaMTX, Caddy). 도메인은 `fflux.kro.kr` 하나(서브도메인 없음)이고, Caddy가 HTTPS와 same-origin 라우팅을 맡는다(`/api` → Spring, `/media` → MediaMTX).
 
 ## 핵심 도메인
 

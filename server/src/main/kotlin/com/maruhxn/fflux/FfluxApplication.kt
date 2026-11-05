@@ -1,11 +1,11 @@
-package com.maruhxn.flux
+package com.maruhxn.fflux
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 
 @SpringBootApplication
-class FluxApplication
+class FfluxApplication
 
 fun main(args: Array<String>) {
-    runApplication<FluxApplication>(*args)
+    runApplication<FfluxApplication>(*args)
 }

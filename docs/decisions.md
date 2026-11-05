@@ -4,8 +4,8 @@
 
 ## 1. 인프라
 
-- VM 1대 + Docker Compose: Spring Boot, MySQL 8, MediaMTX(`bluenviron/mediamtx:latest-ffmpeg`), Caddy.
-- 도메인 + Caddy 자동 HTTPS. `getDisplayMedia`/`getUserMedia`가 HTTPS에서만 동작하기 때문.
+- AWS VM 1대 + Docker Compose: Spring Boot, MySQL 8, MediaMTX(`bluenviron/mediamtx:latest-ffmpeg`), Caddy.
+- 도메인 `fflux.kro.kr` 하나 + Caddy 자동 HTTPS(`getDisplayMedia`/`getUserMedia`가 HTTPS에서만 동작). 모든 경로를 같은 호스트에 두므로 서브도메인은 쓰지 않는다. `kro.kr`은 Public Suffix List에 없어 Let's Encrypt 발급 한도를 다른 `kro.kr` 사용자와 공유한다. 발급이 막히면 Caddy의 ZeroSSL 폴백에 기댄다.
 - 같은 도메인(same-origin)으로 묶는다: 프론트 정적 파일, `/api` → Spring, `/media` → MediaMTX WHIP/WHEP/HLS.
 - `/internal/*`은 Caddy에서 라우팅하지 않고, Spring 8080 포트는 호스트에 publish하지 않는다(네트워크 격리로 내부 API 보호).
 - WebRTC 미디어 포트 UDP/TCP 8189를 VM에서 직접 개방. TURN 없이 시작하고, 스파이크에서 실패하면 coturn 추가.
@@ -131,7 +131,7 @@ server/
 ### 모듈 내부 패키지 (헥사고날)
 
 ```
-com.maruhxn.flux.<module>
+com.maruhxn.fflux.<module>
 ├─ port
 │  ├─ web            # Controller, request/response DTO
 │  ├─ persistence    # Spring Data 리포지토리 (required 포트 구현)

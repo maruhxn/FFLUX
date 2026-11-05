@@ -23,7 +23,7 @@ server/
 ## 모듈 내부 패키지
 
 ```
-com.maruhxn.flux.<module>
+com.maruhxn.fflux.<module>
 ├─ port
 │  ├─ web            # Controller, request/response DTO
 │  ├─ persistence    # Spring Data 리포지토리 (required 포트 구현)
