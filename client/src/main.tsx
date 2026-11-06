@@ -6,6 +6,7 @@ import { Layout } from './components/Layout'
 import './index.css'
 import { BroadcastDetailPage } from './pages/BroadcastDetailPage'
 import { BroadcastEditPage, BroadcastNewPage } from './pages/BroadcastFormPage'
+import { BroadcastPublishPage } from './pages/BroadcastPublishPage'
 import { EndedBroadcastsPage } from './pages/EndedBroadcastsPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
@@ -27,6 +28,7 @@ const router = createBrowserRouter([
       { path: '/broadcasts/new', element: <BroadcastNewPage /> },
       { path: '/broadcasts/:id', element: <BroadcastDetailPage /> },
       { path: '/broadcasts/:id/edit', element: <BroadcastEditPage /> },
+      { path: '/broadcasts/:id/publish', element: <BroadcastPublishPage /> },
       { path: '/me/broadcasts', element: <MyBroadcastsPage /> },
     ],
   },

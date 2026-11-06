@@ -43,6 +43,14 @@ export function BroadcastDetailPage() {
       </div>
       {isStreamer && (
         <div className="flex gap-2">
+          {broadcast.status === 'READY' && (
+            <Link
+              to={`/broadcasts/${broadcast.id}/publish`}
+              className="rounded-md bg-emerald-500 px-3 py-1.5 text-sm font-semibold text-neutral-950"
+            >
+              방송 시작 (PC)
+            </Link>
+          )}
           {broadcast.status !== 'ENDED' && (
             <Link
               to={`/broadcasts/${broadcast.id}/edit`}

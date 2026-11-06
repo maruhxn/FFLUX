@@ -41,10 +41,12 @@ export function useBroadcastList(kind: BroadcastListKind) {
   })
 }
 
-export function useBroadcast(id: number) {
+/** [refetchInterval]을 주면 그 간격으로 다시 읽는다(SSE가 붙기 전 상태 확인용). */
+export function useBroadcast(id: number, refetchInterval?: number) {
   return useQuery({
     queryKey: [...BROADCASTS_KEY, 'detail', id],
     queryFn: () => api<Broadcast>(`/api/broadcasts/${id}`),
+    refetchInterval,
   })
 }
 
@@ -73,5 +75,15 @@ export function useDeleteBroadcast(id: number) {
   return useMutation({
     mutationFn: () => api<void>(`/api/broadcasts/${id}`, { method: 'DELETE' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: BROADCASTS_KEY }),
+  })
+}
+
+export type PublishToken = { token: string; whipUrl: string }
+
+/** 송출 토큰 발급. 토큰은 약 1분 안에 한 번만 쓸 수 있으므로 송출 직전에 받는다. */
+export function useIssuePublishToken(id: number) {
+  return useMutation({
+    mutationFn: (record: boolean) =>
+      api<PublishToken>(`/api/broadcasts/${id}/publish-token`, { method: 'POST', body: { record } }),
   })
 }
