@@ -10,7 +10,7 @@ paths:
 ```
 server/
 ├─ app/        # @SpringBootApplication, Security·설정, 모듈 간 어댑터(조립 지점)
-├─ common/     # shared kernel: 이벤트 계약, 공통 예외, @LoginMember
+├─ common/     # shared kernel: 이벤트 계약, 공통 예외, LoginMember·@PublicApi
 └─ modules/{member, broadcast, recording, chat, comment, donation, realtime}
 ```
 
@@ -40,7 +40,7 @@ com.maruhxn.fflux.<module>
 - domain의 엔티티는 JPA `@Entity`를 그대로 도메인 모델로 쓴다. 상태 전이와 불변식 검증은 엔티티 메서드에 둔다.
 - provided 유스케이스는 Result DTO를 반환한다. 엔티티는 application 밖으로 내보내지 않는다.
 - 영속성 어댑터는 `interface BroadcastJpaRepository : JpaRepository<Broadcast, Long>, BroadcastRepository`처럼 required 포트를 상속한 Spring Data 인터페이스 하나로 끝낸다.
-- 권한 확인(스트리머·작성자)은 application 서비스에서 한다. 현재 사용자는 web 포트가 `common`의 `@LoginMember memberId: Long`으로 받아 Command에 담아 넘긴다.
+- 권한 확인(스트리머·작성자)은 application 서비스에서 한다. 현재 사용자는 web 포트가 `common`의 `member: LoginMember` 파라미터로 받아 Command에 담아 넘긴다.
 
 ## ArchUnit 규칙
 

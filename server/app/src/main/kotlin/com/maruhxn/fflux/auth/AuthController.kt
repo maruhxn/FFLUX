@@ -1,5 +1,7 @@
 package com.maruhxn.fflux.auth
 
+import com.maruhxn.fflux.common.auth.LoginMember
+import com.maruhxn.fflux.common.auth.PublicApi
 import com.maruhxn.fflux.common.error.NotFoundException
 import com.maruhxn.fflux.member.application.provided.AuthenticateMember
 import com.maruhxn.fflux.member.application.provided.FindMember
@@ -9,8 +11,6 @@ import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import org.springframework.http.ResponseEntity
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
-import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.web.context.SecurityContextRepository
 import org.springframework.web.bind.annotation.GetMapping
@@ -28,6 +28,7 @@ class AuthController(
     private val testAccountProperties: TestAccountProperties,
 ) {
 
+    @PublicApi
     @PostMapping("/login")
     fun login(
         @Valid @RequestBody request: LoginRequest,
@@ -39,6 +40,7 @@ class AuthController(
     }
 
     /** 평가용: 로그인 화면의 "테스트 계정으로 로그인" 버튼. 비밀번호 없이 시드 계정으로 로그인한다. */
+    @PublicApi
     @PostMapping("/test-login")
     fun testLogin(
         @Valid @RequestBody request: TestLoginRequest,
@@ -52,6 +54,7 @@ class AuthController(
         return signIn(member, httpRequest, httpResponse)
     }
 
+    @PublicApi
     @PostMapping("/logout")
     fun logout(httpRequest: HttpServletRequest): ResponseEntity<Unit> {
         httpRequest.getSession(false)?.invalidate()
@@ -60,8 +63,7 @@ class AuthController(
     }
 
     @GetMapping("/me")
-    fun me(@AuthenticationPrincipal principal: LoginPrincipal): MeResponse =
-        MeResponse(principal.memberId, principal.nickname)
+    fun me(member: LoginMember): MeResponse = MeResponse(member.memberId, member.nickname)
 
     private fun signIn(
         member: MemberSummary,
@@ -70,9 +72,8 @@ class AuthController(
     ): MeResponse {
         // 세션 고정 공격을 막기 위해 로그인 시 세션 ID를 바꾼다.
         httpRequest.getSession(false)?.let { httpRequest.changeSessionId() }
-        val principal = LoginPrincipal(member.memberId, member.nickname)
         val context = SecurityContextHolder.createEmptyContext().apply {
-            authentication = UsernamePasswordAuthenticationToken.authenticated(principal, null, emptyList())
+            authentication = LoginAuthentication(LoginMember(member.memberId, member.nickname))
         }
         SecurityContextHolder.setContext(context)
         securityContextRepository.saveContext(context, httpRequest, httpResponse)

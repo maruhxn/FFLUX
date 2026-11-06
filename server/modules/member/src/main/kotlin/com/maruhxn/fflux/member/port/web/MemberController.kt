@@ -1,5 +1,6 @@
 package com.maruhxn.fflux.member.port.web
 
+import com.maruhxn.fflux.common.auth.PublicApi
 import com.maruhxn.fflux.member.application.provided.RegisterMember
 import com.maruhxn.fflux.member.application.provided.RegisterMemberCommand
 import jakarta.validation.Valid
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/members")
 class MemberController(private val registerMember: RegisterMember) {
 
+    @PublicApi
     @PostMapping
     fun signUp(@Valid @RequestBody request: SignUpRequest): ResponseEntity<SignUpResponse> {
         val memberId = registerMember.register(

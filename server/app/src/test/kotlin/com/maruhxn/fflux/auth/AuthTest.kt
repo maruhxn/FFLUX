@@ -1,6 +1,7 @@
 package com.maruhxn.fflux.auth
 
 import com.maruhxn.fflux.common.auth.LoginMember
+import com.maruhxn.fflux.common.auth.PublicApi
 import com.maruhxn.fflux.support.IntegrationTest
 import com.maruhxn.fflux.support.TEST_STREAMER_PASSWORD
 import org.junit.jupiter.api.Test
@@ -11,6 +12,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 import kotlin.test.assertEquals
@@ -21,6 +23,9 @@ class AuthTest : IntegrationTest() {
 
     @Autowired
     private lateinit var testAccountSeeder: TestAccountSeeder
+
+    @Autowired
+    private lateinit var jdbcTemplate: JdbcTemplate
 
     @Test
     fun `아이디 비밀번호 닉네임으로 가입한다`() {
@@ -65,7 +70,9 @@ class AuthTest : IntegrationTest() {
         val me = me(sessionCookieOf(login.headers))
         assertEquals(HttpStatus.OK, me.statusCode)
         assertEquals("새내기", me.body?.get("nickname"))
-        assertNotNull(me.body?.get("memberId"))
+        val memberId = assertNotNull(me.body?.get("memberId")).toString()
+        val principalNames = jdbcTemplate.queryForList("SELECT PRINCIPAL_NAME FROM SPRING_SESSION", String::class.java)
+        assertEquals(listOf(memberId), principalNames)
     }
 
     @Test
@@ -125,18 +132,38 @@ class AuthTest : IntegrationTest() {
     }
 
     @Test
-    fun `LoginMember는 로그인한 회원 ID를, 비로그인은 401을 준다`() {
+    fun `LoginMember로 로그인한 회원의 ID와 닉네임을 받는다`() {
         signUp("newbie01", "password123", "새내기")
-        val login = login("newbie01", "password123")
-        val cookie = sessionCookieOf(login.headers)
+        val cookie = sessionCookieOf(login("newbie01", "password123").headers)
         val memberId = (me(cookie).body?.get("memberId") as Number).toLong()
 
-        val loggedIn = http.get().uri("/test/login-member").header(HttpHeaders.COOKIE, cookie)
-            .retrieve().toEntity(Long::class.java)
-        val anonymous = http.get().uri("/test/login-member").retrieve().toEntity(ProblemDetail::class.java)
+        val response = http.get().uri("/api/test/login-member").header(HttpHeaders.COOKIE, cookie)
+            .retrieve().toEntity(LoginMember::class.java)
 
-        assertEquals(memberId, loggedIn.body)
-        assertEquals(HttpStatus.UNAUTHORIZED, anonymous.statusCode)
+        assertEquals(LoginMember(memberId, "새내기"), response.body)
+    }
+
+    @Test
+    fun `PublicApi가 없는 api는 비로그인이면 401 ProblemDetail`() {
+        val response = http.get().uri("/api/test/login-member").retrieve().toEntity(ProblemDetail::class.java)
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.statusCode)
+        assertEquals(MediaType.APPLICATION_PROBLEM_JSON, response.headers.contentType)
+    }
+
+    @Test
+    fun `핸들러가 없는 api 경로도 비로그인이면 401`() {
+        val response = http.get().uri("/api/no-such-path").retrieve().toBodilessEntity()
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.statusCode)
+    }
+
+    @Test
+    fun `PublicApi가 붙은 api는 비로그인도 부를 수 있다`() {
+        val response = http.get().uri("/api/test/public").retrieve().toEntity(String::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals("public", response.body)
     }
 
     private fun seedTestAccounts() = testAccountSeeder.run(DefaultApplicationArguments())
@@ -171,8 +198,12 @@ class AuthTest : IntegrationTest() {
 }
 
 @RestController
-class LoginMemberTestController {
+class AuthTestController {
 
-    @GetMapping("/test/login-member")
-    fun loginMember(@LoginMember memberId: Long): Long = memberId
+    @GetMapping("/api/test/login-member")
+    fun loginMember(member: LoginMember): LoginMember = member
+
+    @PublicApi
+    @GetMapping("/api/test/public")
+    fun public(): String = "public"
 }

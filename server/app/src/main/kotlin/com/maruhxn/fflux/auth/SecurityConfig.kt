@@ -3,7 +3,6 @@ package com.maruhxn.fflux.auth
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ProblemDetail
@@ -23,17 +22,19 @@ import tools.jackson.databind.json.JsonMapper
 class SecurityConfig {
 
     @Bean
-    fun securityFilterChain(http: HttpSecurity, jsonMapper: JsonMapper): SecurityFilterChain {
+    fun securityFilterChain(
+        http: HttpSecurity,
+        jsonMapper: JsonMapper,
+        publicApiAuthorizationManager: PublicApiAuthorizationManager,
+    ): SecurityFilterChain {
         http
             .csrf { it.disable() }
             .formLogin { it.disable() }
             .httpBasic { it.disable() }
             .logout { it.disable() }
             .authorizeHttpRequests {
-                it.requestMatchers(HttpMethod.POST, "/api/members").permitAll()
-                    .requestMatchers("/api/auth/me").authenticated()
-                    .requestMatchers("/api/auth/**").permitAll()
-                    .requestMatchers("/api/**").authenticated()
+                // /api는 기본 거절이고 @PublicApi 핸들러만 비로그인을 허용한다. 그 밖(SPA, 내부 훅)은 열어 둔다.
+                it.requestMatchers("/api/**").access(publicApiAuthorizationManager)
                     .anyRequest().permitAll()
             }
             .exceptionHandling {

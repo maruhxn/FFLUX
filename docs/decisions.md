@@ -89,6 +89,7 @@
   - 지난 방송: `ENDED` 방송, 다시보기가 있으면 배지
   - 내 방송: `READY` 포함, 스트리머 본인만
   - soft delete된 방송은 어디에도 노출하지 않음
+- 스트리머 닉네임은 방송 등록 시점 스냅샷으로 방송에 저장한다(채팅·댓글 작성자 닉네임과 같은 방식). 목록·상세가 `member` 모듈을 조회하지 않는다. 닉네임 변경 기능은 없다.
 
 ## 4. 실시간 갱신
 
@@ -147,7 +148,7 @@
 ```
 server/
 ├─ app/            # @SpringBootApplication, Security·설정, 모듈 간 어댑터(조립 지점)
-├─ common/         # shared kernel: 이벤트 계약, 공통 예외, @LoginMember 등
+├─ common/         # shared kernel: 이벤트 계약, 공통 예외, LoginMember·@PublicApi 등
 └─ modules/
    ├─ member/      # 회원가입·로그인·인증
    ├─ broadcast/   # 방송 CRUD·상태 머신·송출 토큰·MediaMTX 인증/훅/kick
@@ -205,8 +206,10 @@ com.maruhxn.fflux.<module>
 
 - Spring Security 설정(필터 체인, 세션, 401/403 처리)은 `app`.
 - 자격 증명 확인은 `member`의 provided 유스케이스(`AuthenticateMember`).
-- 세션 principal에는 `memberId`, `nickname`만 담는다.
-- 다른 모듈의 web 포트는 `common`의 `@LoginMember memberId: Long`으로 현재 사용자를 받는다. Spring Security 타입은 알지 못한다.
+- 세션 principal은 `common`의 값 타입 `LoginMember(memberId, nickname)`이다.
+- 다른 모듈의 web 포트는 컨트롤러 파라미터 `member: LoginMember`로 현재 사용자를 받는다. 이 파라미터가 있으면 로그인이 필요하다는 뜻이고, Spring Security 타입은 알지 못한다.
+- `/api`는 기본 거절이다. 비로그인으로 열 핸들러 메서드에만 `common`의 `@PublicApi`를 붙이고, `app`의 인가 규칙이 요청을 처리할 핸들러의 이 어노테이션을 보고 허용한다. 공개 경로를 Security 설정에 URL로 나열하지 않으므로 새 API가 `app`을 고치지 않는다. URL 목록 방식은 모듈마다 `app`을 고쳐야 해서, 시그니처만으로 401을 정하고 URL은 모두 여는 방식은 실수가 열린 쪽으로 나서 택하지 않았다.
+- `@PublicApi` 메서드는 `LoginMember`를 받지 않는다(앱 시작 시 검사). "로그인 여부와 상관없는" API는 필요해질 때 추가한다.
 - 스트리머·작성자 권한 확인은 각 모듈의 application 서비스가 한다.
 
 ## 10. 프론트엔드
