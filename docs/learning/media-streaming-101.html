@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>라이브 스트리밍 입문</title>
+<style>
+  :root {
+    --bg: #f7f6f3; --surface: #ffffff; --text: #1f2328; --muted: #5b6370;
+    --line: #dfe2e6; --accent: #2f6fde; --accent-soft: #e8f0fd;
+    --warn-soft: #fff4dc; --warn-line: #f0d08a; --ok-soft: #e6f6ec; --ok-line: #9bd3ae;
+    --code-bg: #f1f3f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15171a; --surface: #1d2024; --text: #e6e8eb; --muted: #9aa3ad;
+      --line: #2e3238; --accent: #6ea2ff; --accent-soft: #1d2a40;
+      --warn-soft: #33290f; --warn-line: #6b5520; --ok-soft: #12291b; --ok-line: #2f6b44;
+      --code-bg: #262a30;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15171a; --surface: #1d2024; --text: #e6e8eb; --muted: #9aa3ad;
+    --line: #2e3238; --accent: #6ea2ff; --accent-soft: #1d2a40;
+    --warn-soft: #33290f; --warn-line: #6b5520; --ok-soft: #12291b; --ok-line: #2f6b44;
+    --code-bg: #262a30;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.75 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 32px 16px 80px; }
+  h1 { font-size: 2rem; margin: 0 0 8px; }
+  h2 { font-size: 1.45rem; margin: 56px 0 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  h3 { font-size: 1.1rem; margin: 28px 0 8px; }
+  p { margin: 10px 0; }
+  .lead { color: var(--muted); }
+  nav { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin: 24px 0; }
+  nav ol { margin: 6px 0 0; padding-left: 20px; columns: 2; column-gap: 32px; }
+  nav a { color: var(--accent); text-decoration: none; }
+  @media (max-width: 640px) { nav ol { columns: 1; } }
+  code { background: var(--code-bg); padding: 1px 6px; border-radius: 5px; font-size: .9em; }
+  .fig { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 14px 0; overflow-x: auto; }
+  .fig .cap { font-size: .85rem; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
+  .note { background: var(--accent-soft); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+  .warn { background: var(--warn-soft); border: 1px solid var(--warn-line); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+  .ok { background: var(--ok-soft); border: 1px solid var(--ok-line); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; background: var(--surface); border-radius: 10px; overflow: hidden; display: block; overflow-x: auto; }
+  th, td { border-bottom: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); font-size: .9rem; white-space: nowrap; }
+  .step { display: inline-block; background: var(--accent); color: #fff; border-radius: 999px; font-size: .75rem; padding: 1px 9px; margin-right: 6px; font-weight: 600; }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .pill { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 12px; font-size: .85rem; }
+  .theme-toggle { position: fixed; top: 12px; right: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 999px; padding: 4px 12px; cursor: pointer; font-size: .85rem; }
+</style>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  const root = document.documentElement;
+  const dark = () => root.dataset.theme === "dark" ||
+    (root.dataset.theme !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+  const sources = [...document.querySelectorAll("pre.mermaid")].map((el) => el.textContent);
+  async function render() {
+    document.querySelectorAll("pre.mermaid").forEach((el, i) => { el.removeAttribute("data-processed"); el.textContent = sources[i]; });
+    mermaid.initialize({ startOnLoad: false, theme: dark() ? "dark" : "default", securityLevel: "loose",
+      sequence: { mirrorActors: false, useMaxWidth: true }, flowchart: { useMaxWidth: true } });
+    await mermaid.run({ querySelector: "pre.mermaid" });
+  }
+  render();
+  document.getElementById("theme").addEventListener("click", () => {
+    root.dataset.theme = dark() ? "light" : "dark";
+    try { localStorage.setItem("theme", root.dataset.theme); } catch {}
+    render();
+  });
+  try { const t = localStorage.getItem("theme"); if (t) { root.dataset.theme = t; render(); } } catch {}
+</script>
+</head>
+<body>
+<button class="theme-toggle" id="theme">밝게/어둡게</button>
+<main>
+
+<h1>라이브 스트리밍 입문</h1>
+<p class="lead">FFLUX에서 쓰는 미디어 개념을 처음부터. WebRTC, WHIP/WHEP, HLS, MediaMTX, 그리고 우리 Spring 서버가 MediaMTX와 주고받는 것까지.</p>
+
+<div class="note">
+FFLUX에서 영상은 <b>브라우저 → MediaMTX → 다른 브라우저</b>로 흐른다. Spring 서버는 영상 데이터를 한 바이트도 만지지 않는다. Spring이 하는 일은 두 가지다. MediaMTX가 "이 사람이 송출해도 되나, 시청해도 되나"를 물으면 답하고, MediaMTX가 "영상이 들어오기 시작했다, 끊겼다"고 알려 주면 방송 상태를 바꾼다.
+</div>
+
+<nav>
+  <b>목차</b>
+  <ol>
+    <li><a href="#why-server">왜 미디어 서버가 필요한가</a></li>
+    <li><a href="#codec">영상이 데이터가 되는 과정: 코덱</a></li>
+    <li><a href="#webrtc">WebRTC</a></li>
+    <li><a href="#ice">연결 경로 찾기: ICE, NAT, TURN</a></li>
+    <li><a href="#whip">WHIP와 WHEP</a></li>
+    <li><a href="#hls">HLS와 폴백</a></li>
+    <li><a href="#mediamtx">MediaMTX</a></li>
+    <li><a href="#network">우리 스택의 네트워크 배치</a></li>
+    <li><a href="#spring">Spring과 MediaMTX의 대화</a></li>
+    <li><a href="#record">녹화와 다시보기</a></li>
+    <li><a href="#glossary">용어 정리</a></li>
+    <li><a href="#next">더 볼 것</a></li>
+  </ol>
+</nav>
+
+<!-- 1 -->
+<h2 id="why-server">1. 왜 미디어 서버가 필요한가</h2>
+<p>가장 단순한 라이브 방송은 스트리머 브라우저가 시청자 브라우저로 영상을 직접 보내는 것이다. 브라우저끼리 직접 영상을 주고받는 기술이 WebRTC다.</p>
+<div class="fig"><p class="cap">① 시청자 1명: 직접 보내면 된다</p>
+<pre class="mermaid">
+flowchart LR
+  S["스트리머 브라우저"] -- "영상 1부" --> V1["시청자 A"]
+</pre></div>
+<p>시청자가 늘면 문제가 생긴다. 스트리머가 시청자 수만큼 영상을 따로 보내야 한다. 영상 하나가 3Mbps면 시청자 10명에 30Mbps를 올려야 하고, 가정 회선이나 휴대폰 LTE는 금방 한계에 닿는다.</p>
+<div class="fig"><p class="cap">② 시청자 3명: 업로드가 3배</p>
+<pre class="mermaid">
+flowchart LR
+  S["스트리머 브라우저"] -- "1부" --> V1["시청자 A"]
+  S -- "1부" --> V2["시청자 B"]
+  S -- "1부" --> V3["시청자 C"]
+  linkStyle 0,1,2 stroke:#d9534f,stroke-width:2px
+</pre></div>
+<p>그래서 가운데에 미디어 서버를 둔다. 스트리머는 서버에 딱 한 부만 올리고, 서버가 시청자 수만큼 복사해서 나눠 준다. 서버는 회선이 넓은 데이터센터에 있으니 복사를 감당할 수 있다. FFLUX에서 이 역할을 하는 프로그램이 <b>MediaMTX</b>다.</p>
+<div class="fig"><p class="cap">③ 미디어 서버가 복사를 맡는다</p>
+<pre class="mermaid">
+flowchart LR
+  S["스트리머 브라우저"] -- "1부만 업로드" --> M[("MediaMTX")]
+  M --> V1["시청자 A"]
+  M --> V2["시청자 B"]
+  M --> V3["시청자 C"]
+</pre></div>
+<p>MediaMTX는 받은 영상을 다시 압축하지 않고 그대로 전달한다. 다시 압축(트랜스코딩)하면 CPU를 많이 쓰고 지연이 늘어서다. 대신 스트리머가 처음부터 모든 시청자가 재생할 수 있는 형식으로 보내야 한다. 다음 절의 코덱 이야기가 여기서 나온다.</p>
+
+<!-- 2 -->
+<h2 id="codec">2. 영상이 데이터가 되는 과정: 코덱</h2>
+<p>카메라가 만드는 날것의 영상은 너무 크다. 1280×720 화면 한 장이 약 2.7MB이고, 1초에 30장이면 초당 80MB다. 이걸 네트워크로 보낼 수 없으니 압축한다. 압축하고 푸는 규칙을 <b>코덱</b>이라고 한다.</p>
+<div class="fig"><p class="cap">① 캡처</p>
+<pre class="mermaid">
+flowchart LR
+  C["카메라·화면 공유"] --> R["날것의 프레임<br/>초당 수십 MB"]
+</pre></div>
+<div class="fig"><p class="cap">② 인코딩: 코덱으로 압축</p>
+<pre class="mermaid">
+flowchart LR
+  C["카메라·화면 공유"] --> R["날것의 프레임"] --> E["인코더<br/>영상: H264"] --> P["압축된 영상<br/>초당 수백 KB"]
+  Mic["마이크·탭 소리"] --> A["날것의 소리"] --> EA["인코더<br/>소리: Opus"] --> PA["압축된 소리"]
+</pre></div>
+<div class="fig"><p class="cap">③ 전송과 디코딩: 받는 쪽이 같은 코덱으로 푼다</p>
+<pre class="mermaid">
+flowchart LR
+  P["압축된 영상(H264)"] -- "네트워크" --> D["디코더(H264)"] --> Screen["시청자 화면"]
+  PA["압축된 소리(Opus)"] -- "네트워크" --> DA["디코더(Opus)"] --> Spk["스피커"]
+</pre></div>
+<p>받는 쪽이 그 코덱을 못 풀면 재생이 안 된다. 그래서 FFLUX는 송출 때 영상 코덱을 <b>H264로 강제</b>한다(<code>setCodecPreferences</code>). 브라우저는 VP8, VP9, AV1 같은 다른 코덱도 고를 수 있지만, H264가 iPhone Safari와 HLS, MP4 녹화에서 가장 널리 재생된다. 소리는 WebRTC 표준 코덱인 <b>Opus</b>다.</p>
+<p>코덱과 자주 헷갈리는 말이 <b>컨테이너</b>다. 코덱은 "어떻게 압축했나"이고, 컨테이너는 "압축된 영상과 소리를 어떤 상자에 담아 파일로 만드나"다. MP4가 컨테이너다. 그래서 "H264 + Opus가 담긴 MP4"라고 말한다.</p>
+
+<!-- 3 -->
+<h2 id="webrtc">3. WebRTC</h2>
+<p><b>WebRTC</b>(Web Real-Time Communication)는 브라우저에 들어 있는 실시간 영상·음성 전송 기능이다. 화상회의(Google Meet 등)가 이걸로 만들어진다. 지연이 1초 미만으로 매우 짧은 게 특징이다. 코드에서는 <code>RTCPeerConnection</code> 객체 하나가 연결 하나를 맡는다.</p>
+<p>WebRTC 연결은 두 단계로 나뉜다. 먼저 <b>시그널링</b>으로 "어떤 코덱으로, 어떤 주소로 보낼지"를 합의하고, 그다음 합의한 대로 <b>미디어</b>가 흐른다. 시그널링 방법은 WebRTC가 정해 두지 않았다. 각 서비스가 웹소켓이든 HTTP든 알아서 정한다. 이 빈칸을 표준으로 채운 게 5절의 WHIP/WHEP다.</p>
+
+<h3>시그널링: SDP 주고받기</h3>
+<p>합의 내용은 <b>SDP</b>(Session Description Protocol)라는 텍스트로 적는다. 보내는 쪽이 "나는 H264와 Opus를 쓸 수 있다"는 <b>offer</b>를 만들고, 받는 쪽이 "그럼 H264와 Opus로 하자"는 <b>answer</b>를 돌려준다.</p>
+<div class="fig"><p class="cap">① offer와 answer</p>
+<pre class="mermaid">
+sequenceDiagram
+  participant B as 스트리머 브라우저
+  participant M as MediaMTX
+  B->>B: createOffer()<br/>"H264, Opus 가능"
+  B->>M: offer(SDP)
+  M->>B: answer(SDP)<br/>"H264, Opus로 하자"
+</pre></div>
+<p>SDP에는 코덱 말고도 "나에게 연락할 수 있는 주소 후보" 목록이 들어간다. 이 후보를 <b>ICE candidate</b>라고 한다. 다음 절에서 자세히 본다.</p>
+<div class="fig"><p class="cap">② SDP에 주소 후보도 들어간다</p>
+<pre class="mermaid">
+sequenceDiagram
+  participant B as 스트리머 브라우저
+  participant M as MediaMTX
+  B->>B: createOffer()<br/>코덱 + 내 주소 후보
+  B->>M: offer(SDP)
+  M->>B: answer(SDP)<br/>코덱 + 서버 주소 후보<br/>예: 192.168.10.132:8189
+</pre></div>
+<p>합의가 끝나면 미디어는 시그널링과 <b>다른 길</b>로 흐른다. 시그널링은 HTTP였지만 미디어는 UDP 패킷(RTP)으로 answer에 적힌 주소로 직접 간다. FFLUX에서는 MediaMTX의 8189 포트다.</p>
+<div class="fig"><p class="cap">③ 합의 후 미디어는 UDP로 직접</p>
+<pre class="mermaid">
+sequenceDiagram
+  participant B as 스트리머 브라우저
+  participant M as MediaMTX
+  B->>M: offer(SDP) — HTTP
+  M->>B: answer(SDP) — HTTP
+  Note over B,M: 여기까지 시그널링
+  B-)M: 영상·소리 패킷(RTP) — UDP 8189로 계속
+  B-)M: ...
+</pre></div>
+<div class="note">UDP를 쓰는 이유: TCP는 패킷 하나가 늦으면 뒤 패킷을 모두 기다리게 한다. 라이브에서는 늦게 온 0.1초 전 화면보다 지금 화면이 중요하니, 일부를 버리더라도 기다리지 않는 UDP가 맞다.</div>
+
+<!-- 4 -->
+<h2 id="ice">4. 연결 경로 찾기: ICE, NAT, TURN</h2>
+<p>집이나 휴대폰의 기기는 보통 공유기나 통신사 뒤에 있어서 바깥에서 직접 찾아올 수 없다. 이렇게 사설 주소를 공인 주소로 바꿔 주는 장치를 <b>NAT</b>라고 한다. <b>ICE</b>는 양쪽이 서로의 주소 후보를 하나씩 찔러 보며 실제로 통하는 경로를 찾는 절차다.</p>
+<div class="fig"><p class="cap">① 같은 와이파이: 사설 주소끼리 바로 통한다 (로컬 스파이크에서 확인한 경우)</p>
+<pre class="mermaid">
+flowchart LR
+  Phone["휴대폰<br/>같은 와이파이"] -- "UDP 8189" --> PC["PC의 MediaMTX<br/>192.168.10.132"]
+</pre></div>
+<div class="fig"><p class="cap">② LTE: 휴대폰은 바깥에 있고, PC는 공유기 뒤에 숨어 있다</p>
+<pre class="mermaid">
+flowchart LR
+  Phone["휴대폰<br/>LTE"] -. "192.168.10.132로 못 감" .-> NAT["공유기(NAT)"] --- PC["PC의 MediaMTX"]
+  linkStyle 0 stroke:#d9534f,stroke-width:2px
+</pre></div>
+<div class="fig"><p class="cap">③ AWS: 서버가 공인 IP를 가지면 바깥에서도 바로 온다. 그래도 막히면 TURN이 중계</p>
+<pre class="mermaid">
+flowchart LR
+  Phone["휴대폰<br/>LTE"] -- "UDP 8189" --> VM["AWS VM의 MediaMTX<br/>공인 IP"]
+  Phone -. "직접이 막히면" .-> TURN["TURN 서버<br/>(coturn)"] -.-> VM
+</pre></div>
+<p>로컬에서 LTE 시청이 WebRTC로 안 되고 HLS로 넘어간 이유가 ②다. 그래서 LTE의 WebRTC 확인은 공인 IP가 있는 AWS 단계(#11)로 미뤘다. MediaMTX 설정의 <code>webrtcAdditionalHosts</code>는 "answer에 이 주소도 후보로 넣어 줘"라는 뜻이다. 로컬에서는 PC 내부 IP, AWS에서는 도메인이나 공인 IP를 넣는다.</p>
+<p><b>TURN</b>은 양쪽이 끝내 직접 연결하지 못할 때 대신 패킷을 받아 넘겨 주는 중계 서버다. 일부 통신사 NAT는 직접 연결을 막아서 필요할 수 있다. FFLUX는 TURN 없이 시작하고, AWS에서 LTE가 실패할 때만 coturn을 추가하기로 했다.</p>
+
+<!-- 5 -->
+<h2 id="whip">5. WHIP와 WHEP</h2>
+<p>3절에서 시그널링 방법은 WebRTC가 정하지 않는다고 했다. <b>WHIP</b>(WebRTC-HTTP Ingestion Protocol)는 송출용 시그널링을, <b>WHEP</b>(WebRTC-HTTP Egress Protocol)는 시청용 시그널링을 HTTP 요청 하나로 정한 표준이다. 덕분에 브라우저 코드와 MediaMTX가 따로 약속을 만들 필요가 없다.</p>
+<p>규칙은 단순하다. offer SDP를 HTTP <code>POST</code> 본문으로 보내면, 서버가 <code>201 Created</code>와 함께 answer SDP를 본문으로, 세션 주소를 <code>Location</code> 헤더로 돌려준다. 끝낼 때는 그 세션 주소로 <code>DELETE</code>를 보낸다.</p>
+<div class="fig"><p class="cap">① WHIP: 송출 시작</p>
+<pre class="mermaid">
+sequenceDiagram
+  participant B as 스트리머 브라우저
+  participant M as MediaMTX
+  B->>M: POST /media/rec/42/whip<br/>Content-Type: application/sdp<br/>본문: offer
+  M->>B: 201 Created<br/>Location: /media/rec/42/whip/세션ID<br/>본문: answer
+</pre></div>
+<div class="fig"><p class="cap">② 이어서 미디어가 흐르고, 끝낼 때 DELETE</p>
+<pre class="mermaid">
+sequenceDiagram
+  participant B as 스트리머 브라우저
+  participant M as MediaMTX
+  B->>M: POST .../whip (offer)
+  M->>B: 201 + answer + Location
+  B-)M: 영상·소리(UDP 8189)
+  B->>M: DELETE /media/rec/42/whip/세션ID
+  Note over M: 송출 세션 종료
+</pre></div>
+<div class="fig"><p class="cap">③ WHEP: 시청도 같은 모양, 방향만 반대</p>
+<pre class="mermaid">
+sequenceDiagram
+  participant V as 시청자 브라우저
+  participant M as MediaMTX
+  V->>M: POST /media/rec/42/whep<br/>본문: offer("받기만 할게")
+  M->>V: 201 + answer + Location
+  M-)V: 영상·소리(UDP 8189)
+</pre></div>
+<p>스파이크 코드의 <code>whipPublish()</code>와 <code>whepPlay()</code>가 정확히 이 순서를 따른다. <code>createOffer → POST → setRemoteDescription(answer)</code>.</p>
+
+<!-- 6 -->
+<h2 id="hls">6. HLS와 폴백</h2>
+<p><b>HLS</b>(HTTP Live Streaming)는 Apple이 만든 방식으로, 라이브 영상을 몇 초짜리 작은 파일(세그먼트)로 잘라 평범한 HTTP 파일 다운로드로 나눠 준다. 시청자는 목록 파일(<code>index.m3u8</code>)을 주기적으로 받아 새 세그먼트가 생겼는지 보고 이어서 받는다.</p>
+<div class="fig"><p class="cap">① MediaMTX가 들어오는 영상을 조각낸다</p>
+<pre class="mermaid">
+flowchart LR
+  In["WHIP로 들어온 영상"] --> M["MediaMTX"] --> Seg["세그먼트 1, 2, 3 ...<br/>각 몇 초"]
+  M --> List["index.m3u8<br/>세그먼트 목록"]
+</pre></div>
+<div class="fig"><p class="cap">② 시청자는 목록을 다시 받아 새 조각을 이어 받는다</p>
+<pre class="mermaid">
+sequenceDiagram
+  participant V as 시청자
+  participant M as MediaMTX(HLS)
+  V->>M: GET /media/rec/42/index.m3u8
+  M->>V: 목록: seg1, seg2, seg3
+  V->>M: GET seg1, seg2, seg3
+  V->>M: (몇 초 뒤) GET index.m3u8
+  M->>V: 목록: seg2, seg3, seg4
+  V->>M: GET seg4
+</pre></div>
+<p>HLS는 평범한 HTTP라서 어디서나 통한다. 터널(HTTP만 전달)도 지나가고, NAT도 문제가 되지 않고, iPhone Safari는 기본으로 재생한다. 대신 조각이 쌓여야 재생하니 지연이 수 초다.</p>
+<table>
+  <tr><th></th><th>WebRTC (WHEP)</th><th>HLS</th></tr>
+  <tr><td>지연</td><td>1초 미만</td><td>수 초</td></tr>
+  <tr><td>전송</td><td>UDP 8189로 직접</td><td>HTTP 파일 다운로드</td></tr>
+  <tr><td>NAT·방화벽</td><td>막히면 실패할 수 있음</td><td>HTTP가 되면 됨</td></tr>
+  <tr><td>FFLUX에서</td><td>기본 시청 방식</td><td>WebRTC 실패 시 폴백</td></tr>
+</table>
+<div class="fig"><p class="cap">③ FFLUX 시청 화면의 폴백 흐름</p>
+<pre class="mermaid">
+flowchart TD
+  Start["재생"] --> W["WHEP 연결 시도"]
+  W -- "8초 안에 connected" --> Live["WebRTC로 재생"]
+  W -- "실패·시간 초과" --> H["HLS로 재생"]
+  H -- "Safari" --> Native["네이티브 HLS"]
+  H -- "그 외 브라우저" --> HJS["hls.js"]
+</pre></div>
+<p>로컬 스파이크에서 HLS를 LL-HLS(저지연 변형)가 아닌 일반 fMP4 HLS로 바꾼 이유는, 브라우저 송출에서 LL-HLS 조각 길이가 흔들려 iOS 호환 경고가 났기 때문이다. 폴백 용도라 지연보다 호환성을 골랐다.</p>
+
+<!-- 7 -->
+<h2 id="mediamtx">7. MediaMTX</h2>
+<p><b>MediaMTX</b>는 오픈소스 미디어 서버 프로그램이다. 여러 프로토콜로 영상을 받아서 여러 프로토콜로 내보내고, 녹화도 한다. FFLUX는 그중 WHIP(받기), WHEP과 HLS(내보내기), 녹화를 쓴다.</p>
+<p>MediaMTX에서 방송 하나는 <b>path</b>라는 이름으로 구분된다. URL의 <code>/media/rec/42/whip</code>에서 <code>rec/42</code>가 path다. FFLUX는 방송 ID를 path에 넣고, 녹화하는 방송은 <code>rec/</code>, 안 하는 방송은 <code>live/</code>로 시작한다.</p>
+<div class="fig"><p class="cap">① path 하나에 송출자 하나</p>
+<pre class="mermaid">
+flowchart LR
+  P["스트리머"] -- "WHIP" --> Path["path: rec/42"]
+  P2["다른 사람"] -. "같은 path 송출 거절<br/>(overridePublisher: no)" .-> Path
+  linkStyle 1 stroke:#d9534f
+</pre></div>
+<div class="fig"><p class="cap">② 같은 path를 여러 방식으로 내보낸다</p>
+<pre class="mermaid">
+flowchart LR
+  P["스트리머"] -- "WHIP" --> Path["path: rec/42"]
+  Path -- "WHEP" --> V1["시청자 A"]
+  Path -- "WHEP" --> V2["시청자 B"]
+  Path -- "HLS" --> V3["시청자 C"]
+</pre></div>
+<div class="fig"><p class="cap">③ rec/ path는 녹화도 한다</p>
+<pre class="mermaid">
+flowchart LR
+  P["스트리머"] -- "WHIP" --> Path["path: rec/42"]
+  Path -- "WHEP·HLS" --> V["시청자들"]
+  Path -- "record: yes" --> F["녹화 파일<br/>/recordings/rec/42/..."]
+</pre></div>
+<p>MediaMTX가 쓰는 포트는 세 가지다. WHIP/WHEP 시그널링(HTTP 8889), HLS(HTTP 8888), WebRTC 미디어(UDP/TCP 8189). 앞의 두 개는 Caddy를 거쳐서만 열고, 8189만 바깥에 직접 연다. 다음 절에서 그림으로 본다.</p>
+
+<!-- 8 -->
+<h2 id="network">8. 우리 스택의 네트워크 배치</h2>
+<p>브라우저는 모든 HTTP 요청을 한 주소(<code>fflux.kro.kr</code>, 로컬에서는 터널 주소)로 보낸다. 같은 주소라서 쿠키와 권한 처리가 단순해진다. 그 주소 뒤에서 <b>Caddy</b>가 경로를 보고 요청을 나눠 준다.</p>
+<div class="fig"><p class="cap">① HTTP 요청은 Caddy가 경로별로 나눈다</p>
+<pre class="mermaid">
+flowchart LR
+  B["브라우저"] -- "HTTPS" --> C["Caddy"]
+  C -- "/media/*/whip, whep" --> W["MediaMTX :8889"]
+  C -- "/media/* (HLS)" --> H["MediaMTX :8888"]
+  C -- "/ (화면 파일)" --> F["프론트 정적 파일"]
+</pre></div>
+<div class="fig"><p class="cap">② 영상 패킷만 Caddy를 거치지 않고 8189로 직접</p>
+<pre class="mermaid">
+flowchart LR
+  B["브라우저"] -- "HTTPS" --> C["Caddy"]
+  C --> M["MediaMTX"]
+  B == "UDP/TCP 8189<br/>영상 패킷" ==> M
+</pre></div>
+<div class="fig"><p class="cap">③ Spring까지 넣은 전체 모습 (AWS 배포 기준)</p>
+<pre class="mermaid">
+flowchart LR
+  B["브라우저"] -- "HTTPS 443" --> C["Caddy"]
+  C -- "/api/*" --> S["Spring :8080"]
+  C -- "/media/*" --> M["MediaMTX"]
+  B == "8189 영상" ==> M
+  M -- "/internal/* (내부망만)" --> S
+  S -- "Control API (내부망만)" --> M
+  S --- DB[("MySQL")]
+  X["바깥"] -. "/internal 접근 불가" .-> C
+  linkStyle 7 stroke:#d9534f
+</pre></div>
+<p><code>/internal/*</code>은 MediaMTX가 Spring에게만 보내는 요청이다. Caddy가 이 경로를 아예 라우팅하지 않고 Spring 포트도 바깥에 열지 않아서, 바깥 사람이 방송 상태를 조작할 수 없다.</p>
+<div class="warn">로컬 개발에서는 Caddy 앞에 Cloudflare 터널이 HTTPS를 붙여 준다. 터널은 HTTP만 전달하므로 8189 영상은 같은 와이파이 안에서만 PC로 직접 갈 수 있다. 그래서 로컬에서는 같은 와이파이 WebRTC와 LTE HLS까지만 확인했다.</div>
+
+<!-- 9 -->
+<h2 id="spring">9. Spring과 MediaMTX의 대화</h2>
+<p>Spring과 MediaMTX는 네 가지 방법으로 대화한다.</p>
+<table>
+  <tr><th>방향</th><th>이름</th><th>언제</th><th>무엇을</th></tr>
+  <tr><td>MediaMTX → Spring</td><td>인증 콜백 <code>/internal/mediamtx/auth</code></td><td>누가 송출(publish)이나 시청(read)을 시도할 때</td><td>"허락해도 되나?" 묻고 Spring이 허용/거절</td></tr>
+  <tr><td>MediaMTX → Spring</td><td>상태 훅 <code>available</code> / <code>unavailable</code></td><td>영상이 실제로 들어오기 시작할 때 / 끊겼을 때</td><td>Spring이 방송을 LIVE / ENDED로 바꿈</td></tr>
+  <tr><td>Spring → MediaMTX</td><td>kick (Control API)</td><td>스트리머가 종료 요청을 했을 때</td><td>송출 세션을 강제로 끊음</td></tr>
+  <tr><td>MediaMTX → Spring</td><td>녹화 완료 훅</td><td>녹화 파일이 닫혔을 때</td><td>MP4 변환 후 녹화 정보를 알림</td></tr>
+</table>
+<p>방송 하나의 일생을 따라가며 하나씩 더해 본다. 아래는 아직 구현 전인 계획(이슈 #6~#9)이고, 스파이크는 인증을 열어 둔 상태다.</p>
+
+<h3><span class="step">1</span>송출 토큰 받기</h3>
+<p>MediaMTX는 회원을 모르고 로그인 쿠키도 보지 못한다. 그래서 Spring이 먼저 로그인과 방송 주인을 확인한 뒤 1분짜리 일회용 송출 토큰을 준다.</p>
+<div class="fig">
+<pre class="mermaid">
+sequenceDiagram
+  participant B as 스트리머 브라우저
+  participant S as Spring
+  B->>S: POST /api/broadcasts/42/publish-token (로그인 쿠키)
+  S->>S: 로그인? 이 방송의 스트리머? READY?
+  S->>B: 토큰 + WHIP URL(/media/rec/42/whip)
+</pre></div>
+
+<h3><span class="step">2</span>토큰으로 송출하면 MediaMTX가 Spring에 묻는다</h3>
+<div class="fig">
+<pre class="mermaid">
+sequenceDiagram
+  participant B as 스트리머 브라우저
+  participant M as MediaMTX
+  participant S as Spring
+  B->>S: 토큰 발급(1단계)
+  S->>B: 토큰
+  B->>M: POST /media/rec/42/whip<br/>Authorization: Bearer 토큰
+  M->>S: /internal/mediamtx/auth<br/>action=publish, path=rec/42, 토큰
+  S->>S: 송출 허가: 토큰 유효? path 일치? READY? 토큰 1회 소비
+  S->>M: 200 허용
+  M->>B: 201 + answer
+</pre></div>
+
+<h3><span class="step">3</span>영상이 실제로 들어오면 LIVE</h3>
+<p>"송출 버튼을 눌렀다"가 아니라 "MediaMTX가 영상을 받기 시작했다"가 LIVE의 기준이다. 연결에 실패하면 방송은 READY로 남아서 다시 시도할 수 있다.</p>
+<div class="fig">
+<pre class="mermaid">
+sequenceDiagram
+  participant B as 스트리머 브라우저
+  participant M as MediaMTX
+  participant S as Spring
+  participant V as 시청자들
+  B->>M: WHIP (2단계)
+  B-)M: 영상 패킷 도착
+  M->>S: runOnAvailable 훅<br/>/internal/mediamtx/available (rec/42)
+  S->>S: 송출 시작 확인: READY → LIVE
+  S-)V: SSE: 방송이 LIVE가 됨
+</pre></div>
+
+<h3><span class="step">4</span>시청할 때도 MediaMTX가 묻는다</h3>
+<div class="fig">
+<pre class="mermaid">
+sequenceDiagram
+  participant V as 시청자 브라우저
+  participant M as MediaMTX
+  participant S as Spring
+  V->>M: POST /media/rec/42/whep (토큰 없음, 비로그인 가능)
+  M->>S: /internal/mediamtx/auth<br/>action=read, path=rec/42
+  S->>S: 시청 허가: 방송이 LIVE이고 삭제되지 않았나
+  S->>M: 200 허용
+  M->>V: 201 + answer, 이어서 영상
+</pre></div>
+
+<h3><span class="step">5</span>종료 요청</h3>
+<p>스트리머가 종료 버튼을 누르면 Spring이 먼저 ENDED로 바꾸고, 그다음 MediaMTX에 송출을 끊으라고(kick) 시킨다. 송출이 끊기면 MediaMTX가 unavailable 훅을 보내지만, 이미 ENDED라 아무 일도 하지 않는다(no-op).</p>
+<div class="fig">
+<pre class="mermaid">
+sequenceDiagram
+  participant B as 스트리머 브라우저
+  participant S as Spring
+  participant M as MediaMTX
+  participant V as 시청자들
+  B->>S: POST 종료 요청
+  S->>S: 방송 행 잠금, LIVE → ENDED, 커밋
+  S->>M: kick (Control API)
+  S->>B: 200
+  S-)V: SSE: 방송 종료
+  M->>S: runOnUnavailable 훅
+  S->>S: 이미 ENDED → no-op
+  B->>B: 카메라·PeerConnection 정리
+</pre></div>
+
+<h3><span class="step">6</span>송출 끊김</h3>
+<p>휴대폰 앱 전환이나 네트워크 단절로 영상이 끊기면, 종료 버튼 없이도 MediaMTX의 훅이 방송을 끝낸다. 유예 시간이나 재접속은 없다.</p>
+<div class="fig">
+<pre class="mermaid">
+sequenceDiagram
+  participant B as 스트리머 브라우저
+  participant M as MediaMTX
+  participant S as Spring
+  participant V as 시청자들
+  B--xM: 영상이 더 오지 않음
+  M->>S: runOnUnavailable 훅<br/>/internal/mediamtx/unavailable (rec/42)
+  S->>S: 송출 끊김: LIVE → ENDED
+  S-)V: SSE: 방송 종료
+</pre></div>
+<div class="ok">종료 요청(5)과 송출 끊김(6)은 거의 동시에 올 수 있다. Spring은 방송 행을 잠그고 처리해서 먼저 온 쪽이 ENDED로 바꾸고, 늦게 온 쪽은 no-op으로 끝난다. 그래서 둘이 겹쳐도 방송은 한 번만 끝난다.</div>
+
+<h3>전체 상태 그림</h3>
+<div class="fig">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> READY: 방송 등록
+  READY --> LIVE: available 훅<br/>(영상 수신 시작)
+  LIVE --> ENDED: 종료 요청<br/>(Spring이 kick)
+  LIVE --> ENDED: unavailable 훅<br/>(송출 끊김)
+  ENDED --> [*]
+</pre></div>
+
+<!-- 10 -->
+<h2 id="record">10. 녹화와 다시보기</h2>
+<p>녹화는 MediaMTX가 한다. <code>rec/</code> path로 송출하면 들어오는 영상을 그대로 파일에 쓴다. 다시 압축하지 않으니 부담이 적다.</p>
+<div class="fig"><p class="cap">① 방송 중: fMP4로 계속 쓴다</p>
+<pre class="mermaid">
+flowchart LR
+  P["rec/42 송출"] --> M["MediaMTX"] --> F["fMP4 파일<br/>(조각이 계속 덧붙음)"]
+</pre></div>
+<p><b>fMP4</b>(fragmented MP4)는 작은 조각을 계속 이어 붙이는 MP4다. 방송이 언제 끝날지 모르는 상태에서 쓰기 좋다. 반면 일반 재생에는 "파일 전체 목차(<code>moov</code>)가 맨 앞에 있는 MP4"가 좋다. 목차가 앞에 있어야 브라우저가 파일을 다 받기 전에 재생하고 중간으로 건너뛸 수 있다. 이 배치를 <b>faststart</b>라고 한다.</p>
+<div class="fig"><p class="cap">② 방송이 끝나면: ffmpeg로 faststart MP4로 바꾼다</p>
+<pre class="mermaid">
+flowchart LR
+  F["fMP4"] -- "runOnRecordSegmentComplete 훅<br/>ffmpeg -c copy -movflags +faststart" --> MP4["faststart MP4<br/>/vod/rec/42/..."]
+</pre></div>
+<p><code>-c copy</code>는 압축은 그대로 두고 상자(컨테이너)만 다시 싸라는 뜻이라 몇 초면 끝난다. 이 작업을 <b>리먹싱</b>이라고 한다.</p>
+<div class="fig"><p class="cap">③ 다시보기: Caddy가 파일을 주고 브라우저 &lt;video&gt;가 재생</p>
+<pre class="mermaid">
+flowchart LR
+  F["fMP4"] --> MP4["faststart MP4"]
+  MP4 --> C["Caddy 정적 파일<br/>Range 요청 지원"]
+  C --> V["시청자 &lt;video&gt;<br/>탐색 가능"]
+  MP4 -. "녹화 완료 알림(계획)" .-> S["Spring recording 모듈"]
+</pre></div>
+<p><b>Range 요청</b>은 "파일의 이 구간만 달라"는 HTTP 요청이다. 영상 중간으로 건너뛸 때 브라우저가 이걸로 해당 부분만 받는다. 스파이크에서 iOS Safari 재생까지 확인해서 소리를 AAC로 바꾸는 트랜스코딩은 하지 않기로 했다.</p>
+
+<!-- 11 -->
+<h2 id="glossary">11. 용어 정리</h2>
+<table>
+  <tr><th>용어</th><th>한 줄 설명</th><th>FFLUX에서</th></tr>
+  <tr><td>코덱</td><td>영상·소리를 압축하고 푸는 규칙</td><td>영상 H264(강제), 소리 Opus</td></tr>
+  <tr><td>컨테이너</td><td>압축된 영상과 소리를 담는 파일 형식</td><td>MP4, fMP4</td></tr>
+  <tr><td>WebRTC</td><td>브라우저 내장 실시간 영상·음성 전송</td><td>송출과 기본 시청</td></tr>
+  <tr><td>RTCPeerConnection</td><td>WebRTC 연결 하나를 맡는 브라우저 객체</td><td><code>whipPublish</code>, <code>whepPlay</code></td></tr>
+  <tr><td>시그널링</td><td>연결 전에 코덱·주소를 합의하는 단계</td><td>WHIP/WHEP의 HTTP POST</td></tr>
+  <tr><td>SDP</td><td>합의 내용을 적는 텍스트(offer/answer)</td><td>POST 본문</td></tr>
+  <tr><td>ICE candidate</td><td>"여기로 연락하면 된다"는 주소 후보</td><td><code>webrtcAdditionalHosts</code></td></tr>
+  <tr><td>NAT</td><td>사설 주소를 공인 주소로 바꿔 주는 공유기·통신사 장치</td><td>LTE WebRTC가 로컬에서 안 된 이유</td></tr>
+  <tr><td>TURN</td><td>직접 연결이 안 될 때 패킷을 중계하는 서버</td><td>필요할 때만 coturn 추가</td></tr>
+  <tr><td>WHIP</td><td>WebRTC 송출 시그널링 표준(HTTP POST)</td><td><code>/media/{path}/whip</code></td></tr>
+  <tr><td>WHEP</td><td>WebRTC 시청 시그널링 표준(HTTP POST)</td><td><code>/media/{path}/whep</code></td></tr>
+  <tr><td>HLS</td><td>영상을 몇 초 조각 파일로 나눠 HTTP로 주는 방식</td><td>WHEP 실패 시 폴백</td></tr>
+  <tr><td>m3u8</td><td>HLS 조각 목록 파일</td><td><code>/media/{path}/index.m3u8</code></td></tr>
+  <tr><td>MediaMTX</td><td>오픈소스 미디어 서버</td><td>받고, 나눠 주고, 녹화</td></tr>
+  <tr><td>path</td><td>MediaMTX에서 방송 하나를 가리키는 이름</td><td><code>rec/{방송ID}</code>, <code>live/{방송ID}</code></td></tr>
+  <tr><td>kick</td><td>MediaMTX 송출 세션을 강제로 끊기</td><td>종료 요청 때 Spring이 호출</td></tr>
+  <tr><td>faststart</td><td>MP4 목차를 파일 앞에 두는 배치</td><td>다시보기 즉시 재생·탐색</td></tr>
+  <tr><td>리먹싱</td><td>압축은 두고 컨테이너만 바꾸기</td><td>fMP4 → faststart MP4</td></tr>
+</table>
+
+<!-- 12 -->
+<h2 id="next">12. 더 볼 것</h2>
+<div class="pill-row">
+  <span class="pill">스파이크 코드: <code>infra/spike/spike.js</code></span>
+  <span class="pill">MediaMTX 설정: <code>infra/mediamtx.yml</code></span>
+  <span class="pill">라우팅: <code>infra/Caddyfile</code></span>
+  <span class="pill">결정 이유: <code>docs/decisions.md</code> 2·3·5절</span>
+</div>
+<p>직접 보면 빨리 이해되는 것 두 가지가 있다. Chrome 주소창에 <code>chrome://webrtc-internals</code>를 열어 둔 채 스파이크 시청 페이지를 재생하면, 실제 SDP offer/answer와 ICE 후보, 선택된 경로, 초당 받은 바이트가 그대로 보인다. 개발자 도구 네트워크 탭에서는 <code>whip</code>/<code>whep</code> POST의 본문(SDP)과 <code>201</code> 응답의 <code>Location</code> 헤더를 볼 수 있다.</p>
+<p>표준 문서를 보고 싶으면 WHIP는 RFC 9725, HLS는 RFC 8216이다. WHEP는 아직 IETF 초안 단계다.</p>
+
+</main>
+</body>
+</html>
