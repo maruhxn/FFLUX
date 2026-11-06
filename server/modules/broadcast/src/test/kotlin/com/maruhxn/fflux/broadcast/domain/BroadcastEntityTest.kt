@@ -199,6 +199,41 @@ class BroadcastEntityTest {
         assertEquals(BroadcastStatus.READY, broadcast.status)
     }
 
+    // 종료 요청
+
+    @Test
+    fun `스트리머가 종료를 요청하면 LIVE 방송이 ENDED가 된다`() {
+        val broadcast = live()
+
+        assertTrue(broadcast.requestEnd(STREAMER))
+        assertEquals(BroadcastStatus.ENDED, broadcast.status)
+    }
+
+    @Test
+    fun `이미 ENDED인 방송의 종료 요청은 아무것도 바꾸지 않는다`() {
+        val broadcast = ended()
+
+        assertFalse(broadcast.requestEnd(STREAMER))
+        assertEquals(BroadcastStatus.ENDED, broadcast.status)
+    }
+
+    @Test
+    fun `READY 방송은 종료를 요청할 수 없다`() {
+        val broadcast = register()
+
+        assertFailsWith<ConflictException> { broadcast.requestEnd(STREAMER) }
+        assertEquals(BroadcastStatus.READY, broadcast.status)
+    }
+
+    @Test
+    fun `타인은 상태와 상관없이 종료를 요청할 수 없다`() {
+        listOf(register(), live(), ended()).forEach { broadcast ->
+            val before = broadcast.status
+            assertFailsWith<ForbiddenException> { broadcast.requestEnd(OTHER) }
+            assertEquals(before, broadcast.status)
+        }
+    }
+
     companion object {
         const val STREAMER = 1L
         const val OTHER = 2L

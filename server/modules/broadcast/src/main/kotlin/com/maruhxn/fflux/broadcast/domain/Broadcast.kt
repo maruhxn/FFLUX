@@ -112,6 +112,16 @@ class Broadcast protected constructor(
         BroadcastStatus.READY -> throw ConflictException("송출하지 않은 방송은 끝낼 수 없습니다.")
     }
 
+    /** 종료 요청: 스트리머가 직접 LIVE 방송을 끝낸다. 송출 끊김이 먼저 끝냈으면 그대로 둔다. */
+    fun requestEnd(memberId: Long): Boolean {
+        checkStreamer(memberId)
+        return when (status) {
+            BroadcastStatus.LIVE -> true.also { status = BroadcastStatus.ENDED }
+            BroadcastStatus.ENDED -> false
+            BroadcastStatus.READY -> throw ConflictException("방송 중이 아니라 종료할 수 없습니다. 송출하지 않은 방송은 삭제하세요.")
+        }
+    }
+
     private fun checkStreamer(memberId: Long) {
         if (streamerId != memberId) throw ForbiddenException("방송의 스트리머만 할 수 있습니다.")
     }

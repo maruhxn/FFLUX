@@ -6,6 +6,8 @@ import com.maruhxn.fflux.broadcast.application.required.PublishTokenRepository
 import com.maruhxn.fflux.broadcast.domain.BroadcastStatus
 import com.maruhxn.fflux.broadcast.domain.PublishToken
 import com.maruhxn.fflux.common.error.ConflictException
+import com.maruhxn.fflux.common.error.NotFoundException
+import com.maruhxn.fflux.common.event.EventPublisherPort
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -17,6 +19,7 @@ import java.time.LocalDateTime
 class BroadcastStatusChangeService(
     private val broadcastRepository: BroadcastRepository,
     private val publishTokenRepository: PublishTokenRepository,
+    private val eventPublisher: EventPublisherPort,
     private val clock: Clock,
 ) : BroadcastStatusChanger {
 
@@ -52,6 +55,23 @@ class BroadcastStatusChangeService(
         } catch (e: ConflictException) {
             log.warn("송출 시작 확인: 전이할 수 없음 id={} status={}", broadcast.id, broadcast.status)
         }
+    }
+
+    override fun confirmPublishEnded(mediaPath: String) {
+        val broadcast = broadcastRepository.findForUpdateByMediaPath(mediaPath)
+            ?: return log.warn("송출 끊김: 방송이 없거나 삭제됨 path={}", mediaPath)
+        try {
+            if (broadcast.endByDisconnect()) log.info("방송 종료(송출 끊김): id={}", broadcast.id)
+        } catch (e: ConflictException) {
+            log.warn("송출 끊김: 전이할 수 없음 id={} status={}", broadcast.id, broadcast.status)
+        }
+    }
+
+    override fun requestEnd(broadcastId: Long, memberId: Long) {
+        val broadcast = broadcastRepository.findForUpdate(broadcastId) ?: throw NotFoundException("방송을 찾을 수 없습니다.")
+        if (!broadcast.requestEnd(memberId)) return
+        log.info("방송 종료(종료 요청): id={}", broadcast.id)
+        eventPublisher.publish(BroadcastEndRequested(broadcast.id, checkNotNull(broadcast.mediaPath)))
     }
 
     private fun deny(mediaPath: String, reason: String): Boolean {

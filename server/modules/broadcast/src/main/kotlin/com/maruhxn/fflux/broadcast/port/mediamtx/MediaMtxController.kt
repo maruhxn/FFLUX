@@ -35,6 +35,13 @@ class MediaMtxController(
         broadcastStatusChanger.confirmPublishStarted(request.path)
         return ResponseEntity.ok().build()
     }
+
+    /** `runOnUnavailable` 훅(송출 끊김). 전이할 수 없어도 200으로 응답한다. */
+    @PostMapping("/unavailable")
+    fun unavailable(@RequestBody request: MediaMtxHookRequest): ResponseEntity<Unit> {
+        broadcastStatusChanger.confirmPublishEnded(request.path)
+        return ResponseEntity.ok().build()
+    }
 }
 
 /** MediaMTX 인증 요청 본문 중 쓰는 칸만 받는다. WHIP의 `Authorization: Bearer` 값은 [token]으로 온다. */

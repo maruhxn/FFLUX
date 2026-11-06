@@ -2,6 +2,7 @@ package com.maruhxn.fflux.broadcast.port.web
 
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastPage
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastResult
+import com.maruhxn.fflux.broadcast.application.provided.BroadcastStatusChanger
 import com.maruhxn.fflux.broadcast.application.provided.EditBroadcastCommand
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastFinder
 import com.maruhxn.fflux.broadcast.application.provided.PublishTokenIssuer
@@ -29,6 +30,7 @@ class BroadcastController(
     private val broadcastModifier: BroadcastModifier,
     private val broadcastFinder: BroadcastFinder,
     private val publishTokenIssuer: PublishTokenIssuer,
+    private val broadcastStatusChanger: BroadcastStatusChanger,
 ) {
 
     @PostMapping
@@ -56,6 +58,12 @@ class BroadcastController(
         val result = publishTokenIssuer.issue(IssuePublishTokenCommand(id, member.memberId, request.record))
         // 미디어 서버는 같은 도메인의 /media 아래에 있다(Caddy가 넘긴다).
         return PublishTokenResponse(token = result.token, whipUrl = "/media/${result.mediaPath}/whip")
+    }
+
+    @PostMapping("/{id}/end")
+    fun end(member: LoginMember, @PathVariable id: Long): ResponseEntity<Unit> {
+        broadcastStatusChanger.requestEnd(id, member.memberId)
+        return ResponseEntity.noContent().build()
     }
 
     @PublicApi

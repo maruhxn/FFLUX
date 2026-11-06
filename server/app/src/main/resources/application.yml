@@ -35,3 +35,6 @@ fflux:
     enabled: ${TEST_ACCOUNTS_ENABLED:true}
     streamer-password: ${TEST_STREAMER_PASSWORD:}
     viewer-password: ${TEST_VIEWER_PASSWORD:}
+  mediamtx:
+    # MediaMTX Control API(송출 세션 kick). 로컬은 infra compose가 127.0.0.1:9997에 연다.
+    api-url: ${MEDIAMTX_API_URL:http://localhost:9997}
