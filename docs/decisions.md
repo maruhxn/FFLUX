@@ -131,9 +131,12 @@
 
 ## 8. 인증과 에러
 
-- Spring Security 세션 방식(HttpOnly 쿠키), Spring Session JDBC로 MySQL에 세션 저장.
-- 회원 필드: `username`(유니크), `password`(BCrypt), `nickname`. 이메일 인증·소셜 로그인 없음.
-- 테스트 계정 `streamer`, `viewer`를 시드로 넣고 로그인 화면에 "테스트 계정으로 로그인" 버튼 제공.
+- Spring Security 세션 방식(HttpOnly 쿠키), Spring Session JDBC로 MySQL에 세션 저장. 세션 테이블은 Flyway가 만든다.
+- CSRF는 세션 쿠키 `SameSite=Lax`로 막고 Spring Security CSRF 토큰은 쓰지 않는다. 모든 경로가 같은 도메인이고, 최신 브라우저는 다른 사이트의 POST·PUT·DELETE에 Lax 쿠키를 싣지 않는다. 운영(HTTPS)에서는 쿠키에 `Secure`를 붙인다.
+- 로그인 API: `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, 가입은 `POST /api/members`. 로그인 시 세션 ID를 바꾼다(세션 고정 방지).
+- 회원 필드: `username`(유니크, 영문 소문자·숫자·`_` 4~20자), `password`(BCrypt, 8~64자), `nickname`(2~12자). 이메일 인증·소셜 로그인 없음.
+- 테스트 계정 `streamer`, `viewer`를 앱 기동 시 시드한다. 비밀번호는 환경변수(`TEST_STREAMER_PASSWORD`, `TEST_VIEWER_PASSWORD`)로만 받고, 비어 있으면 그 계정은 만들지 않는다.
+- 로그인 화면의 "테스트 계정으로 로그인" 버튼은 `POST /api/auth/test-login`(body: `account`)을 부른다. 평가자가 비밀번호 없이 들어오게 하려는 것이라, 이 두 계정에만 비밀번호 없는 로그인을 허용한다(`TEST_ACCOUNTS_ENABLED`로 끌 수 있음).
 - 에러 응답은 `ProblemDetail` + `@RestControllerAdvice`로 통일.
   - 400 검증 실패, 401 비로그인, 403 스트리머·작성자 아님, 404 대상 없음, 409 상태 위반
 

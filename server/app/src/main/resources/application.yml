@@ -1,6 +1,9 @@
 spring:
   application:
     name: fflux
+  config:
+    # 로컬 bootRun(작업 디렉터리 server/app)에서 server/.env 값을 읽는다. 운영에서는 환경변수를 쓴다.
+    import: optional:file:../.env[.properties]
   jpa:
     open-in-view: false
     hibernate:
@@ -9,7 +12,26 @@ spring:
       hibernate:
         jdbc:
           time_zone: Asia/Seoul
+  session:
+    jdbc:
+      # 세션 테이블은 Flyway 마이그레이션(V1)이 만든다.
+      initialize-schema: never
   docker:
     compose:
       # 로컬 개발(bootRun)에서만 server/compose.yaml의 MySQL을 띄운다.
       file: ../compose.yaml
+
+server:
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+        # 운영(HTTPS)에서는 true로 둔다.
+        secure: ${SESSION_COOKIE_SECURE:false}
+
+fflux:
+  test-accounts:
+    enabled: ${TEST_ACCOUNTS_ENABLED:true}
+    streamer-password: ${TEST_STREAMER_PASSWORD:}
+    viewer-password: ${TEST_VIEWER_PASSWORD:}

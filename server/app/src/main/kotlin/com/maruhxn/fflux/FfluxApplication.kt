@@ -2,10 +2,12 @@ package com.maruhxn.fflux
 
 import com.maruhxn.fflux.config.ClockConfig
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan
 import org.springframework.boot.runApplication
 import java.util.TimeZone
 
 @SpringBootApplication
+@ConfigurationPropertiesScan
 class FfluxApplication
 
 fun main(args: Array<String>) {

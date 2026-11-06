@@ -98,7 +98,7 @@ class ArchitectureTest {
         val MODULES = listOf("member", "broadcast", "realtime")
 
         /** `app` 모듈의 최상위 패키지. 모듈이 아니다. */
-        val APP_PACKAGES = setOf("adapter", "config", "web")
+        val APP_PACKAGES = setOf("adapter", "auth", "config", "web")
     }
 }
 

@@ -9,10 +9,12 @@ paths:
 # 인증과 인가
 
 - Spring Security 세션 방식(HttpOnly 쿠키), Spring Session JDBC로 MySQL에 저장한다. JWT는 쓰지 않는다.
+- CSRF는 `SameSite=Lax` 세션 쿠키로 막고 CSRF 토큰은 쓰지 않는다. 쓰기 API를 GET으로 만들지 않는다(Lax 쿠키는 다른 사이트의 GET 이동에는 실린다).
+- 401·403은 필터 단계(`AuthenticationEntryPoint`, `AccessDeniedHandler`)에서도 MVC 예외 처리와 같은 ProblemDetail 형식으로 응답한다.
 - Security 설정(필터 체인, 401/403 처리)은 `app`에만 둔다. 자격 증명 확인은 `member`의 provided 유스케이스 `AuthenticateMember`가 한다.
 - 세션 principal에는 `memberId`, `nickname`만 담는다. 다른 모듈의 web 포트는 `@LoginMember memberId: Long`으로 받고 Spring Security 타입을 직접 쓰지 않는다.
 - 회원 필드: `username`(유니크), `password`(BCrypt), `nickname`.
-- 테스트 계정 `streamer`, `viewer`를 시드로 넣는다. 로그인 화면의 "테스트 계정으로 로그인"이 이 계정을 쓴다.
+- 테스트 계정 `streamer`, `viewer`를 시드로 넣는다. 비밀번호는 환경변수로만 받는다. 로그인 화면의 "테스트 계정으로 로그인"은 `POST /api/auth/test-login`으로 이 두 계정에만 비밀번호 없이 로그인한다.
 
 ## 접근 규칙
 
