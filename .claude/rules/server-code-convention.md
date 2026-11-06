@@ -27,7 +27,8 @@ paths:
 | `spring.jpa.open-in-view=false`로 설정한다 | 켜두면 요청 끝까지 커넥션을 유지함. Spring Boot도 기본값(true)일 때 기동 시 경고를 띄움 |
 | Controller에서 Entity를 그대로 반환하지 않고 응답 DTO로 변환한다 | API 스펙이 DB 스키마에 묶이고, 직렬화 중 LAZY 로딩이나 순환 참조가 발생함 |
 | enum 필드는 `@Enumerated(EnumType.STRING)`으로 저장한다 | 기본값 ORDINAL은 enum 순서가 바뀌면 저장된 값의 의미가 달라짐 |
-| 조건부 UPDATE(상태 전이, 토큰 소비, 후원 확정)는 `@Modifying(clearAutomatically = true, flushAutomatically = true)` 쿼리로 쓰고, 반환한 영향 행 수(`Int`)로 성공 여부를 판단한다 | 벌크 UPDATE는 영속성 컨텍스트를 거치지 않아, 옵션 없이 쓰면 같은 트랜잭션에서 다시 조회할 때 바뀌기 전 엔티티가 보임 |
+| 판단이 필요한 상태 전이(방송 상태 전이)는 `@Lock(PESSIMISTIC_WRITE)` 조회로 행을 잠근 뒤 엔티티 메서드로 바꾼다 | 규칙이 엔티티 한 곳에 모이고, 경쟁하는 요청의 순서를 잠금이 정함. 영향 행 0개를 다시 조회해 해석할 필요가 없음 |
+| 값 하나를 한 번만 바꾸는 단순 갱신(송출 토큰 소비, 후원 확정)은 조건부 UPDATE를 `@Modifying(clearAutomatically = true, flushAutomatically = true)` 쿼리로 쓰고, 반환한 영향 행 수(`Int`)로 성공 여부를 판단한다 | 쿼리 한 번으로 중복 처리를 막음. 벌크 UPDATE는 영속성 컨텍스트를 거치지 않아, 옵션 없이 쓰면 같은 트랜잭션에서 다시 조회할 때 바뀌기 전 엔티티가 보임 |
 | soft delete 조건 `deleted_at IS NULL`은 쿼리마다 직접 쓴다. Hibernate `@SQLRestriction` 같은 자동 필터는 쓰지 않는다 | 조건부 UPDATE에는 어차피 직접 써야 하고, 자동 필터와 섞이면 어디에 조건이 걸렸는지 알기 어려움 |
 | 스키마는 Flyway 마이그레이션으로 관리하고 `spring.jpa.hibernate.ddl-auto=validate`로 둔다. 적용된 마이그레이션 파일은 고치지 않고 새 버전을 추가한다 | 재시작 후에도 데이터가 남는 운영 DB를 다룸. `update`는 컬럼 삭제·이름 변경을 반영하지 못하고 변경 이력이 남지 않음 |
 

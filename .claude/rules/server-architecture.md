@@ -57,5 +57,7 @@ com.maruhxn.fflux.<module>
 ## 공통 규약
 
 - 에러 응답은 `ProblemDetail` + `@RestControllerAdvice` 하나로 통일한다: 400 검증 실패, 401 비로그인, 403 스트리머·작성자 아님, 404 대상 없음, 409 상태 위반.
-- 상태 전이는 조건부 UPDATE(`WHERE status = <기대 상태>`)로 멱등하게 만든다. 이미 목표 상태면 no-op으로 성공을 반환한다.
+- 상태 변경은 두 가지로 나눈다.
+  - **판단이 필요한 상태 전이**(방송 상태 전이): 대상 행을 `SELECT … FOR UPDATE`로 잠근 뒤 엔티티 메서드가 "전이 / 이미 목표 상태(no-op) / 위반"을 판단하고 저장한다. 이미 목표 상태면 no-op으로 성공한다.
+  - **값 하나를 한 번만 바꾸는 단순 갱신**(송출 토큰 1회 소비, 후원 확정 `PENDING → DONE`): 조건부 UPDATE(`WHERE <기대 상태>`)로 하고 영향 행 수로 성공 여부를 판단한다.
 - 외부 요청 경로: 공개 API는 `/api/**`, MediaMTX 훅·콜백은 `/internal/**`. `/internal/**`은 Docker 내부망에서만 닿는다는 전제로 둔다.

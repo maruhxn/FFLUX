@@ -14,12 +14,15 @@ paths:
 | 전이 | 트리거 |
 |---|---|
 | `READY → LIVE` | MediaMTX `runOnAvailable` 훅 → `/internal/mediamtx/available` (실제 트랙 수신 시점) |
-| `LIVE → ENDED` 비정상 | `runOnUnavailable` 훅 → `/internal/mediamtx/unavailable` → 즉시 ENDED (유예·재접속 없음) |
-| `LIVE → ENDED` 정상 | 종료 API: 세션·스트리머 본인 검증 → ENDED → MediaMTX API로 송출 세션 kick |
+| `LIVE → ENDED` 송출 끊김 | `runOnUnavailable` 훅 → `/internal/mediamtx/unavailable` → 즉시 ENDED (유예·재접속 없음) |
+| `LIVE → ENDED` 종료 요청 | 종료 API: 세션·스트리머 본인 검증 → ENDED → MediaMTX API로 송출 세션 kick |
 
 - 프론트 요청으로 LIVE를 만들지 않는다. LIVE는 훅으로만 된다.
-- 정상 종료와 `runOnUnavailable`은 경쟁할 수 있다. 둘 다 조건부 UPDATE(`WHERE status = 'LIVE'`)로 처리하고, 이미 ENDED면 성공으로 응답한다. `READY` 방송에 종료 API를 호출하면 409.
-- 모든 상태 전이 UPDATE에 `deleted_at IS NULL`을 넣는다.
+- 전이는 `broadcast`의 방송 상태 전이 module 하나에서만 한다. 메서드는 호출하는 곳마다 하나다: 송출 허가, 시청 허가, 송출 시작 확인, 송출 끊김, 종료 요청(`docs/decisions.md` 3절 표). 진입점 컨트롤러는 이 module을 부르기만 한다.
+- 전이 방식: 방송 행을 `@Lock(PESSIMISTIC_WRITE)` 조회로 잠그고, 엔티티 메서드가 "전이 / 이미 목표 상태(no-op) / 위반"을 판단한다. 종료 요청과 송출 끊김이 겹쳐도 잠금이 순서를 정하고, 늦게 온 쪽은 no-op으로 성공한다. `READY` 방송의 종료 요청은 409.
+- 삭제된 방송은 전이 대상이 아니다.
+- 이벤트는 실제로 전이됐을 때만 발행한다. kick은 종료 요청에서만, 커밋 뒤 같은 호출 안에서 부르고 실패하면 로그만 남긴다.
+- 훅(`available`, `unavailable`)은 항상 200으로 응답하고, 전이할 수 없으면 경고 로그만 남긴다.
 - 한 스트리머의 `LIVE` 방송은 동시에 하나다. 송출 토큰 발급과 `publish` 인증에서 검사한다. 거의 동시 송출 시의 경합은 허용한다(`docs/decisions.md` 3절).
 - 수정은 `READY`/`LIVE`에서만(`LIVE` 중 수정은 `BroadcastUpdated` 이벤트로 SSE 반영), 삭제는 `READY`/`ENDED`에서만(LIVE면 409). 삭제 시 미소비 송출 토큰을 무효화한다. 삭제는 soft delete이고 `BroadcastDeleted` 이벤트로 녹화·댓글을 숨긴다. 후원 기록은 보존한다.
 
@@ -34,7 +37,7 @@ paths:
 
 | action | 처리 |
 |---|---|
-| `publish` | 토큰 해시 존재·미만료·미소비, 바인딩된 방송의 `mediaPath`와 요청 path 일치, 방송 `READY`·미삭제, 같은 스트리머의 다른 `LIVE` 방송 없음. 통과하면 조건부 UPDATE(`consumed_at IS NULL AND expires_at > now`)로 소비하고, 영향 행이 정확히 1개일 때만 허용 |
+| `publish` | 토큰 해시 존재·미만료·미소비, 바인딩된 방송의 `mediaPath`와 요청 path 일치, 방송 `READY`·미삭제, 같은 스트리머의 다른 `LIVE` 방송 없음. 통과하면 송출 허가와 같은 트랜잭션에서 조건부 UPDATE(`consumed_at IS NULL AND expires_at > now`)로 소비하고, 영향 행이 정확히 1개일 때만 허용 |
 | `read` | 토큰 없이 허용하되 방송이 `LIVE`·미삭제일 때만 |
 | 그 외 | 거절 (`api`는 MediaMTX 설정의 `authHTTPExclude`로 콜백에서 빠져 있다) |
 

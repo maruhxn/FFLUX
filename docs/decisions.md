@@ -30,7 +30,8 @@
 ## 3. 방송 도메인과 상태
 
 - 방송 1건 = 1회성 세션. 상태는 `READY → LIVE → ENDED`이고 ENDED에서 다시 송출할 수 없다.
-- 상태 전이는 조건부 UPDATE(`WHERE status = ... AND deleted_at IS NULL`)로 멱등하게 처리. 이미 목표 상태면 no-op으로 성공한다.
+- 방송 상태 전이는 방송 행을 `SELECT … FOR UPDATE`로 잠근 뒤 엔티티 메서드가 판단한다(전이 / 이미 목표 상태면 no-op 성공 / 위반). 삭제된 방송은 전이 대상이 아니다. 동시에 들어오는 종료 요청과 송출 끊김은 잠금이 순서를 정한다.
+- 값 하나를 한 번만 바꾸는 단순 갱신(송출 토큰 1회 소비, 후원 확정)은 조건부 UPDATE로 한다.
 - `READY → ENDED` 전이는 없다. 송출하지 않은 방송은 삭제로만 정리한다.
 - 방송 등록 시 `READY`로 생성된다. 한 스트리머가 `READY` 방송을 여러 개 가질 수 있지만, 동시에 `LIVE`인 방송은 하나뿐이다.
   - 송출 토큰 발급과 `publish` 인증에서 같은 스트리머의 다른 `LIVE` 방송이 있으면 409/거절.
@@ -55,11 +56,29 @@
 - 중복 송출은 MediaMTX `overridePublisher: no`로 막는다. 따라서 `PUBLISHING` 상태와 `broadcast_session` 테이블은 두지 않는다.
 - MediaMTX path: 녹화하면 `rec/{broadcastId}`, 녹화하지 않으면 `live/{broadcastId}`. 방송에 `mediaPath`를 저장하고 인증 시 대조한다.
 
+### 방송 상태 전이 module
+
+`broadcast` 모듈 application 계층에 방송 상태 전이와 송출·시청 허가 판단을 맡는 module 하나를 둔다. 진입점(MediaMTX 인증 콜백, 훅 컨트롤러, 종료 API)은 이 module을 부르기만 한다.
+
+| 호출하는 곳 | 메서드 | 입력 | 결과 |
+|---|---|---|---|
+| MediaMTX `publish` 인증 | 송출 허가 | media path, 원본 토큰 | 허용/거절(예외 없음). 같은 트랜잭션에서 토큰을 조건부 UPDATE로 소비 |
+| MediaMTX `read` 인증 | 시청 허가 | media path | 허용/거절 |
+| `available` 훅 | 송출 시작 확인 | media path | 없음. `READY → LIVE`, 할 수 없으면 경고 로그 |
+| `unavailable` 훅 | 송출 끊김 | media path | 없음. `LIVE → ENDED`, 할 수 없으면 경고 로그 |
+| 종료 API | 종료 요청 | 방송 ID, 회원 ID | 성공, 또는 403/404/409 예외 |
+
+- media path를 방송으로 찾는 일은 이 module 안에서 한다.
+- 이벤트(`BroadcastStatusChanged`)는 실제로 전이가 일어났을 때만 발행한다.
+- kick은 종료 요청에서만, 전이 트랜잭션이 커밋된 뒤 같은 호출 안에서 부른다. 실패하면 로그만 남기고 종료 요청은 성공으로 응답한다(상태는 이미 ENDED이고, 이후 송출 끊김 훅은 no-op).
+- 훅은 상태가 맞지 않거나 방송이 없어도 항상 200으로 응답하고 경고 로그만 남긴다. 409는 종료 요청에만 쓴다.
+- 송출 토큰 자체(해시 저장, TTL, 발급·무효화)는 이 module 밖에 둔다.
+
 ### 상태 전이 트리거
 
 - `READY → LIVE`: MediaMTX `runOnAvailable` 훅(스트림을 읽을 수 있게 된 시점, 실제 트랙 수신)이 `/internal/mediamtx/available`을 호출.
-- `LIVE → ENDED`(비정상 종료): `runOnUnavailable` 훅이 `/internal/mediamtx/unavailable`을 호출해 즉시 ENDED. 모바일 앱 전환 시 방송이 종료됨을 README에 명시.
-- `LIVE → ENDED`(정상 종료): 종료 API 호출 → 세션·스트리머 본인 검증 → ENDED → MediaMTX API로 송출 세션 kick → 클라이언트가 트랙과 PeerConnection 정리. `LIVE`가 아닌 방송에 종료 API를 호출하면 409(이미 `ENDED`면 성공).
+- `LIVE → ENDED`(송출 끊김): `runOnUnavailable` 훅이 `/internal/mediamtx/unavailable`을 호출해 즉시 ENDED. 모바일 앱 전환 시 방송이 종료됨을 README에 명시.
+- `LIVE → ENDED`(종료 요청): 종료 API 호출 → 세션·스트리머 본인 검증 → ENDED → MediaMTX API로 송출 세션 kick → 클라이언트가 트랙과 PeerConnection 정리. `LIVE`가 아닌 방송에 종료 API를 호출하면 409(이미 `ENDED`면 성공).
 
 ### 방송 관리 규칙
 
