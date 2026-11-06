@@ -14,7 +14,7 @@ import java.time.LocalDateTime
 
 @Service
 @Transactional
-class BroadcastTransitionService(
+class BroadcastStatusChangeService(
     private val broadcastRepository: BroadcastRepository,
     private val publishTokenRepository: PublishTokenRepository,
     private val clock: Clock,
