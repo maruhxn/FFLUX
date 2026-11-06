@@ -1,4 +1,5 @@
 # 로컬 개발용 MySQL. `./gradlew :app:bootRun`이 spring-boot-docker-compose로 자동 기동한다.
+# 비밀번호는 server/.env에서 읽는다: cp .env.example .env
 services:
   mysql:
     image: mysql:8.4
@@ -6,8 +7,8 @@ services:
     environment:
       MYSQL_DATABASE: fflux
       MYSQL_USER: fflux
-      MYSQL_PASSWORD: fflux-local
-      MYSQL_ROOT_PASSWORD: fflux-local-root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?server/.env에 MYSQL_PASSWORD를 설정하세요}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?server/.env에 MYSQL_ROOT_PASSWORD를 설정하세요}
       TZ: Asia/Seoul
     ports:
       - "3306"
