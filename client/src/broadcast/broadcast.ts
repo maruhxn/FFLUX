@@ -1,0 +1,77 @@
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api } from '../api/client'
+
+export type BroadcastStatus = 'READY' | 'LIVE' | 'ENDED'
+
+export type Broadcast = {
+  id: number
+  streamerId: number
+  streamerNickname: string
+  title: string
+  description: string | null
+  status: BroadcastStatus
+  createdAt: string
+}
+
+type BroadcastPage = { items: Broadcast[]; nextCursor: number | null }
+
+export type BroadcastForm = { title: string; description: string }
+
+export function formatDateTime(value: string) {
+  return new Date(value).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+const BROADCASTS_KEY = ['broadcasts'] as const
+
+/** 목록 종류: 메인(LIVE), 지난 방송(ENDED), 내 방송(mine). */
+export type BroadcastListKind = 'LIVE' | 'ENDED' | 'mine'
+
+export function useBroadcastList(kind: BroadcastListKind) {
+  return useInfiniteQuery({
+    queryKey: [...BROADCASTS_KEY, 'list', kind],
+    initialPageParam: null as number | null,
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams()
+      if (kind !== 'mine') params.set('status', kind)
+      if (pageParam !== null) params.set('cursor', String(pageParam))
+      const path = kind === 'mine' ? '/api/broadcasts/mine' : '/api/broadcasts'
+      return api<BroadcastPage>(`${path}?${params}`)
+    },
+    getNextPageParam: (last) => last.nextCursor,
+  })
+}
+
+export function useBroadcast(id: number) {
+  return useQuery({
+    queryKey: [...BROADCASTS_KEY, 'detail', id],
+    queryFn: () => api<Broadcast>(`/api/broadcasts/${id}`),
+  })
+}
+
+/** 빈 설명은 서버가 없음으로 저장한다. */
+const toBody = (form: BroadcastForm) => ({ title: form.title, description: form.description || null })
+
+export function useRegisterBroadcast() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (form: BroadcastForm) =>
+      api<{ id: number }>('/api/broadcasts', { method: 'POST', body: toBody(form) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: BROADCASTS_KEY }),
+  })
+}
+
+export function useEditBroadcast(id: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (form: BroadcastForm) => api<void>(`/api/broadcasts/${id}`, { method: 'PATCH', body: toBody(form) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: BROADCASTS_KEY }),
+  })
+}
+
+export function useDeleteBroadcast(id: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => api<void>(`/api/broadcasts/${id}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: BROADCASTS_KEY }),
+  })
+}

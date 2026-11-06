@@ -39,7 +39,7 @@ paths:
 | 단순 조회는 Spring Data 메서드 이름 쿼리, 고정된 조건부 UPDATE와 짧은 고정 쿼리는 `@Query`(JPQL)로 쓴다 | 가장 짧고, 쿼리가 메서드 선언 옆에 보임 |
 | 조건이 입력에 따라 달라지는 동적 쿼리, 커서 페이지네이션, 여러 조건 조합은 QueryDSL로 쓴다. 문자열을 이어 붙여 JPQL을 만들지 않는다 | 컴파일 시점에 필드 이름과 타입을 검사함. 문자열 조합은 오타와 인젝션 위험이 있음 |
 | QueryDSL은 유지보수되는 OpenFeign 포크(`io.github.openfeign.querydsl`)를 쓰고, Q 클래스는 KSP로 생성한다 | 원본 `com.querydsl`은 갱신이 멈춤. kapt는 유지보수 모드라 Kotlin에서는 KSP가 맞음. 도입 시점에 Spring Boot·Hibernate 버전과의 호환을 확인한다 |
-| QueryDSL 코드는 `port.persistence`에만 둔다. Spring Data 커스텀 리포지토리(`XxxRepositoryCustom` + `XxxRepositoryImpl`)로 만들어 required 포트를 구현하는 리포지토리가 상속하게 한다 | application과 domain이 쿼리 기술을 모르게 유지함(헥사고날 의존 방향) |
+| QueryDSL 코드는 `port.persistence`에만 둔다. Spring Data 커스텀 리포지토리(`XxxRepositoryCustom` + `XxxRepositoryCustomImpl`. Spring Data는 fragment 인터페이스 이름 + `Impl`로 구현체를 찾는다)로 만들어 required 포트를 구현하는 리포지토리가 상속하게 한다 | application과 domain이 쿼리 기술을 모르게 유지함(헥사고날 의존 방향) |
 | Q 클래스는 domain 패키지에 생성되므로 `ArchitectureTest`의 domain 의존 규칙에서 생성된 Q 클래스를 제외한다 | Q 클래스는 `com.querydsl`을 참조해 domain 허용 목록 규칙에 걸림 |
 
 ## 4. 의존성 주입 / 설정
