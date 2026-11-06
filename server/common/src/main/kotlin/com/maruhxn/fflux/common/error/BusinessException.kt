@@ -6,8 +6,26 @@ package com.maruhxn.fflux.common.error
  */
 sealed class BusinessException(override val message: String) : RuntimeException(message)
 
-/** 400: 요청 값이 규칙에 맞지 않음. [field]가 있으면 응답의 `errors`에 그 칸의 메시지로 담긴다. */
-class BadRequestException(message: String, val field: String? = null) : BusinessException(message)
+/** 400: 요청 값이 규칙에 맞지 않음. [errors](칸 이름 → 메시지)는 응답의 `errors`로 나간다. */
+class BadRequestException(message: String, val errors: Map<String, String> = emptyMap()) : BusinessException(message) {
+
+    /** 한 칸([field])이 틀렸을 때. */
+    constructor(message: String, field: String) : this(message, mapOf(field to message))
+
+    companion object {
+        /**
+         * 여러 칸의 값 객체를 만든 결과를 모아, 하나라도 [BadRequestException]으로 실패했으면 모든 칸의 에러를 담아 한 번에 던진다.
+         * 그 밖의 예외는 그대로 다시 던진다. 통과하면 각 결과에서 `getOrThrow()`로 값을 꺼낸다.
+         */
+        fun throwIfAny(results: List<Result<*>>) {
+            val failures = results.mapNotNull { it.exceptionOrNull() }
+            if (failures.isEmpty()) return
+            failures.firstOrNull { it !is BadRequestException }?.let { throw it }
+            val badRequests = failures.filterIsInstance<BadRequestException>()
+            throw BadRequestException(badRequests.first().message, badRequests.fold(emptyMap()) { acc, e -> acc + e.errors })
+        }
+    }
+}
 
 /** 401: 로그인이 필요함. */
 class UnauthorizedException(message: String) : BusinessException(message)

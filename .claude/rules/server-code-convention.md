@@ -77,6 +77,9 @@ paths:
 | 도메인 규칙(길이, 공백 처리, 허용 범위)이 붙은 값은 값 객체로 만든다. 값 객체는 `@Embeddable` `data class`이고, 주 생성자는 `private`(`@ConsistentCopyVisibility`로 `copy`도 막는다)이며 팩토리 `of(raw)`가 정규화한 값을 생성자에 넘긴다. 생성자의 `init`이 검증해 어기면 `BadRequestException`(400)을 던진다. 예: `BroadcastTitle.of(raw)`, `BroadcastDescription.of(raw)` | 규칙이 한 곳에 모여 등록·수정 등 모든 경로에 같은 검사가 걸림. 정규화 뒤에 검증하므로 "공백 제거 전 길이" 같은 순서 실수가 없음. 값 기준 `equals`/`hashCode`를 `data class`가 만들어 줌. 엔티티와 달리 값 객체는 연관관계가 없어 `data class`의 문제(LAZY 로딩, 순환 참조)가 생기지 않음 |
 | "값이 없음"이 의미를 가지면(빈 설명 = 설명 없음) 팩토리 `of`가 null을 돌려준다. 엔티티는 nullable 값 객체를 갖는다 | 빈 문자열과 null이 섞이지 않음 |
 | 요청 DTO의 Bean Validation은 도메인 규칙을 다시 적지 않는다. 값 객체가 맡는 필드에는 검증 어노테이션을 붙이지 않는다. 대신 값 객체는 `BadRequestException(message, field = "<요청 필드명>")`으로 던져 응답 `errors`에 칸별 메시지가 담기게 한다 | 같은 규칙이 두 곳에 있으면 한쪽만 바뀌어 어긋남. 클라이언트는 Bean Validation 실패와 같은 형식으로 칸별 에러를 받음 |
+| 여러 입력 칸을 받는 유스케이스(가입, 방송 등록·수정)는 각 값 객체를 `runCatching`으로 만든 뒤 `BadRequestException.throwIfAny(listOf(...))`로 실패를 모아, 틀린 칸의 에러를 한 번에 던진다 | 폼이 틀린 칸을 한 번에 모두 보여 줄 수 있음 |
+| 로그인·조회처럼 입력 형식을 따지면 안 되는 곳은 값 객체 생성 실패를 "없음"으로 처리한다(`runCatching { Username.of(raw) }.getOrNull()`). 400을 내지 않는다 | 로그인은 형식이 틀려도 "아이디 또는 비밀번호가 올바르지 않음"(401) 하나로 응답해야 아이디 규칙이 드러나지 않음 |
+| 비밀 값(평문 비밀번호)을 담는 값 객체는 `toString`을 가린다. 영속화하지 않으면 `@Embeddable`을 붙이지 않는다. 예: `Password` | `data class`의 기본 `toString`이 로그·예외 메시지에 값을 그대로 찍음 |
 | 엔티티는 의도를 드러내는 정적 팩토리(`Broadcast.register(...)`)로 만든다. 주 생성자는 `protected`로 막는다 | 생성 규칙(초기 상태 READY, 스냅샷 값)이 이름과 함께 도메인에 남음. 아무 상태로나 만드는 경로를 없앰 |
 | 엔티티의 상태는 도메인 메서드로만 바꾼다. 바뀌는 프로퍼티는 `var … protected set`으로 둔다(allOpen 때문에 `private set`은 쓸 수 없다) | 불변식을 우회하는 쓰기를 막음 |
 | 스트리머·작성자 확인도 엔티티 메서드가 한다. 도메인 메서드는 행위자 ID를 받아 "아니면 403 → 상태 위반이면 409" 순서로 판단한다. 예: `broadcast.edit(memberId, title, description)` | 권한과 상태 규칙이 같은 객체에 있어 판정 순서가 한 곳에서 정해지고, DB 없이 단위 테스트할 수 있음 |

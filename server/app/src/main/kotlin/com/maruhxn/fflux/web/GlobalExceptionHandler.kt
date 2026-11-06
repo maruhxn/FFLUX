@@ -36,7 +36,7 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
             is ConflictException -> HttpStatus.CONFLICT
         }
         val problem = ProblemDetail.forStatusAndDetail(status, e.message)
-        if (e is BadRequestException && e.field != null) problem.setProperty("errors", mapOf(e.field to e.message))
+        if (e is BadRequestException && e.errors.isNotEmpty()) problem.setProperty("errors", e.errors)
         return problem
     }
 

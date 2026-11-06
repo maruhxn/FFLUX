@@ -3,7 +3,10 @@ package com.maruhxn.fflux.auth
 import com.maruhxn.fflux.common.auth.LoginMember
 import com.maruhxn.fflux.common.auth.PublicApi
 import com.maruhxn.fflux.support.IntegrationTest
+import com.maruhxn.fflux.member.application.provided.FindMember
+import com.maruhxn.fflux.member.application.provided.RegisterMember
 import com.maruhxn.fflux.support.TEST_STREAMER_PASSWORD
+import com.maruhxn.fflux.support.TEST_VIEWER_PASSWORD
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.DefaultApplicationArguments
@@ -26,6 +29,12 @@ class AuthTest : IntegrationTest() {
 
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
+
+    @Autowired
+    private lateinit var findMember: FindMember
+
+    @Autowired
+    private lateinit var registerMember: RegisterMember
 
     @Test
     fun `아이디 비밀번호 닉네임으로 가입한다`() {
@@ -57,6 +66,15 @@ class AuthTest : IntegrationTest() {
     }
 
     @Test
+    fun `닉네임 앞뒤 공백은 지우고 저장한다`() {
+        signUp("newbie01", "password123", "  새내기  ")
+
+        val cookie = sessionCookieOf(login("newbie01", "password123").headers)
+
+        assertEquals("새내기", me(cookie).body?.get("nickname"))
+    }
+
+    @Test
     fun `로그인하면 HttpOnly SameSite=Lax 세션 쿠키를 받고 내 정보를 조회한다`() {
         signUp("newbie01", "password123", "새내기")
 
@@ -83,6 +101,11 @@ class AuthTest : IntegrationTest() {
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.statusCode)
         assertEquals(MediaType.APPLICATION_PROBLEM_JSON, response.headers.contentType)
+    }
+
+    @Test
+    fun `형식이 틀린 아이디로 로그인해도 400이 아니라 401`() {
+        assertEquals(HttpStatus.UNAUTHORIZED, login("A!", "password123").statusCode)
     }
 
     @Test
@@ -121,6 +144,20 @@ class AuthTest : IntegrationTest() {
         seedTestAccounts()
 
         assertEquals(HttpStatus.OK, login("streamer", TEST_STREAMER_PASSWORD).statusCode)
+    }
+
+    @Test
+    fun `비밀번호 규칙에 맞지 않는 테스트 계정은 기동을 막지 않고 건너뛴다`() {
+        val seeder = TestAccountSeeder(
+            TestAccountProperties(streamerPassword = "short", viewerPassword = TEST_VIEWER_PASSWORD),
+            findMember,
+            registerMember,
+        )
+
+        seeder.run(DefaultApplicationArguments())
+
+        assertEquals(HttpStatus.NOT_FOUND, testLogin("streamer").statusCode)
+        assertEquals(HttpStatus.OK, testLogin("viewer").statusCode)
     }
 
     @Test

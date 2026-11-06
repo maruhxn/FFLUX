@@ -26,11 +26,12 @@ class BroadcastService(
 ) : ManageBroadcast, FindBroadcast {
 
     override fun register(command: RegisterBroadcastCommand): Long {
+        val (title, description) = titleAndDescription(command.title, command.description)
         val broadcast = Broadcast.register(
             streamerId = command.streamerId,
             streamerNickname = command.streamerNickname,
-            title = BroadcastTitle.of(command.title),
-            description = BroadcastDescription.of(command.description),
+            title = title,
+            description = description,
             now = LocalDateTime.now(clock),
         )
         return broadcastRepository.save(broadcast).id
@@ -38,8 +39,7 @@ class BroadcastService(
 
     override fun edit(command: EditBroadcastCommand) {
         // 입력 검증(400)을 대상 조회(404)보다 먼저 한다.
-        val title = BroadcastTitle.of(command.title)
-        val description = BroadcastDescription.of(command.description)
+        val (title, description) = titleAndDescription(command.title, command.description)
         findForUpdateOrThrow(command.broadcastId).edit(command.memberId, title, description)
     }
 
@@ -73,6 +73,14 @@ class BroadcastService(
             items = items.map { it.toResult() },
             nextCursor = if (rows.size > PAGE_SIZE) items.last().id else null,
         )
+    }
+
+    /** 두 칸이 모두 틀리면 두 칸의 에러를 한 번에 알린다. */
+    private fun titleAndDescription(title: String, description: String?): Pair<BroadcastTitle, BroadcastDescription?> {
+        val titleResult = runCatching { BroadcastTitle.of(title) }
+        val descriptionResult = runCatching { BroadcastDescription.of(description) }
+        BadRequestException.throwIfAny(listOf(titleResult, descriptionResult))
+        return titleResult.getOrThrow() to descriptionResult.getOrThrow()
     }
 
     private fun notFound() = NotFoundException("방송을 찾을 수 없습니다.")

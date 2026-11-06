@@ -76,6 +76,14 @@ class BroadcastTest : IntegrationTest() {
     }
 
     @Test
+    fun `제목과 설명이 모두 틀리면 두 칸의 에러를 한 번에 알려 준다`() {
+        val response = registerResponse(streamer, " ", "가".repeat(501))
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(setOf("title", "description"), (response.body!!["errors"] as Map<*, *>).keys)
+    }
+
+    @Test
     fun `설명이 500자를 넘으면 등록은 400`() {
         assertEquals(HttpStatus.BAD_REQUEST, registerResponse(streamer, "첫 방송", "가".repeat(501)).statusCode)
     }
