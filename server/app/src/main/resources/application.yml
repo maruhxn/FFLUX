@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: fflux
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Asia/Seoul
+  docker:
+    compose:
+      # 로컬 개발(bootRun)에서만 server/compose.yaml의 MySQL을 띄운다.
+      file: ../compose.yaml

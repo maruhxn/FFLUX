@@ -164,7 +164,7 @@ com.maruhxn.fflux.<module>
 ### ArchUnit 규칙 (`app` 모듈의 `ArchitectureTest`)
 
 1. domain은 port와 application을 참조하지 않는다.
-2. domain은 허용 목록만 참조한다: Kotlin/Java 표준 라이브러리, `jakarta.persistence`, Hibernate, `org.springframework..`, `common`, 자기 모듈 domain. 단, KSP가 생성한 QueryDSL Q 클래스는 이 규칙에서 제외한다.
+2. domain은 허용 목록만 참조한다: Kotlin/Java 표준 라이브러리(Kotlin 컴파일러가 붙이는 `org.jetbrains.annotations` 포함), `jakarta.persistence`, Hibernate, `org.springframework..`, `common`, 자기 모듈 domain. 단, KSP가 생성한 QueryDSL Q 클래스는 이 규칙에서 제외한다.
 3. application은 port를 참조하지 않는다.
 4. `port.web`은 `application.required`를 참조하지 않는다.
 5. `port.persistence` 외의 port는 `@Entity` 클래스를 참조하지 않는다. enum, 값 객체 등 그 밖의 domain 클래스는 참조할 수 있다.
