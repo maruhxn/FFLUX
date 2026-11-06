@@ -10,23 +10,23 @@ class BroadcastValueTest {
 
     @Test
     fun `제목은 앞뒤 공백을 지운 값이다`() {
-        assertEquals("첫 방송", BroadcastTitle("  첫 방송  ").value)
+        assertEquals("첫 방송", BroadcastTitle.of("  첫 방송  ").value)
     }
 
     @Test
     fun `제목 길이는 공백을 지운 뒤 50자까지다`() {
-        assertEquals(50, BroadcastTitle("  ${"가".repeat(50)}  ").value.length)
-        assertFailsWith<BadRequestException> { BroadcastTitle("가".repeat(51)) }
+        assertEquals(50, BroadcastTitle.of("  ${"가".repeat(50)}  ").value.length)
+        assertFailsWith<BadRequestException> { BroadcastTitle.of("가".repeat(51)) }
     }
 
     @Test
     fun `공백뿐인 제목은 만들 수 없다`() {
-        assertFailsWith<BadRequestException> { BroadcastTitle("   ") }
+        assertFailsWith<BadRequestException> { BroadcastTitle.of("   ") }
     }
 
     @Test
     fun `같은 글자의 제목은 같은 값이다`() {
-        assertEquals(BroadcastTitle("첫 방송"), BroadcastTitle(" 첫 방송"))
+        assertEquals(BroadcastTitle.of("첫 방송"), BroadcastTitle.of(" 첫 방송"))
     }
 
     @Test

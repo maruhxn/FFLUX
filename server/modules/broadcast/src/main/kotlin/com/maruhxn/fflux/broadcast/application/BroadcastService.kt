@@ -29,7 +29,7 @@ class BroadcastService(
         val broadcast = Broadcast.register(
             streamerId = command.streamerId,
             streamerNickname = command.streamerNickname,
-            title = BroadcastTitle(command.title),
+            title = BroadcastTitle.of(command.title),
             description = BroadcastDescription.of(command.description),
             now = LocalDateTime.now(clock),
         )
@@ -38,7 +38,7 @@ class BroadcastService(
 
     override fun edit(command: EditBroadcastCommand) {
         // 입력 검증(400)을 대상 조회(404)보다 먼저 한다.
-        val title = BroadcastTitle(command.title)
+        val title = BroadcastTitle.of(command.title)
         val description = BroadcastDescription.of(command.description)
         findForUpdateOrThrow(command.broadcastId).edit(command.memberId, title, description)
     }

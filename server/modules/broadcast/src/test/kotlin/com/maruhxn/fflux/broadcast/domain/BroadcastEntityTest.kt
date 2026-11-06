@@ -13,7 +13,7 @@ class BroadcastEntityTest {
     private val now = LocalDateTime.of(2026, 11, 6, 21, 0)
 
     private fun register() =
-        Broadcast.register(STREAMER, "스트리머", BroadcastTitle("원래 제목"), null, now)
+        Broadcast.register(STREAMER, "스트리머", BroadcastTitle.of("원래 제목"), null, now)
 
     @Test
     fun `등록하면 READY 방송이고 스트리머 닉네임을 그대로 담는다`() {
@@ -28,9 +28,9 @@ class BroadcastEntityTest {
     fun `스트리머는 READY 방송을 수정한다`() {
         val broadcast = register()
 
-        broadcast.edit(STREAMER, BroadcastTitle("바꾼 제목"), BroadcastDescription.of("설명"))
+        broadcast.edit(STREAMER, BroadcastTitle.of("바꾼 제목"), BroadcastDescription.of("설명"))
 
-        assertEquals(BroadcastTitle("바꾼 제목"), broadcast.title)
+        assertEquals(BroadcastTitle.of("바꾼 제목"), broadcast.title)
         assertEquals("설명", broadcast.description?.value)
     }
 
@@ -38,8 +38,8 @@ class BroadcastEntityTest {
     fun `스트리머가 아니면 수정할 수 없다`() {
         val broadcast = register()
 
-        assertFailsWith<ForbiddenException> { broadcast.edit(OTHER, BroadcastTitle("바꾼 제목"), null) }
-        assertEquals(BroadcastTitle("원래 제목"), broadcast.title)
+        assertFailsWith<ForbiddenException> { broadcast.edit(OTHER, BroadcastTitle.of("바꾼 제목"), null) }
+        assertEquals(BroadcastTitle.of("원래 제목"), broadcast.title)
     }
 
     @Test
