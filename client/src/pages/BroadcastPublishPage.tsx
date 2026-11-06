@@ -3,12 +3,18 @@ import { Link, Navigate, useParams } from 'react-router'
 import { useMe } from '../auth/auth'
 import { useBroadcast, useIssuePublishToken, type Broadcast } from '../broadcast/broadcast'
 import { useBroadcastEvents } from '../broadcast/events'
-import { captureScreen, releaseCapture, type Capture } from '../broadcast/capture'
-import { startPublish, usePublishSession } from '../broadcast/publishSession'
+import { captureCamera, captureScreen, flipCamera, publishesCamera, releaseCapture, type Capture, type Facing } from '../broadcast/capture'
+import {
+  flipPublishingCamera,
+  startPublish,
+  useLostBroadcastId,
+  usePublishSession,
+  type PublishSession,
+} from '../broadcast/publishSession'
 import { EndBroadcastButton } from '../components/EndBroadcastButton'
 import { StatusBadge } from '../components/StatusBadge'
 
-/** PC 송출(`/broadcasts/:id/publish`). 스트리머만, READY 방송에서 시작한다. */
+/** 송출(`/broadcasts/:id/publish`). PC는 화면 공유, 모바일은 카메라로 보낸다. 스트리머만, READY 방송에서 시작한다. */
 export function BroadcastPublishPage() {
   const id = Number(useParams().id)
   const { data: me, isPending } = useMe()
@@ -27,7 +33,8 @@ type Step = 'record' | 'capture'
 /** 송출은 앱 전체의 송출 세션이 들고 있어 이 화면을 떠나도 이어진다. 다시 들어오면 진행 중인 송출을 보여 준다. */
 function PublishView({ broadcast }: { broadcast: Broadcast }) {
   const session = usePublishSession()
-  if (session?.broadcastId === broadcast.id) return <PublishingView broadcast={broadcast} stream={session.stream} audioLabel={session.audioLabel} />
+  const lostBroadcastId = useLostBroadcastId()
+  if (session?.broadcastId === broadcast.id) return <PublishingView broadcast={broadcast} session={session} />
   if (session) {
     return (
       <p className="text-neutral-400">
@@ -39,13 +46,21 @@ function PublishView({ broadcast }: { broadcast: Broadcast }) {
       </p>
     )
   }
+  if (lostBroadcastId === broadcast.id) {
+    return (
+      <p className="text-neutral-400">
+        방송이 종료되었습니다. 이 기기에서 종료하지 않았다면 송출이 끊긴 것입니다(앱 전환, 화면 꺼짐, 네트워크 끊김).
+      </p>
+    )
+  }
   if (broadcast.status === 'ENDED') return <p className="text-neutral-400">방송이 종료되었습니다.</p>
   if (broadcast.status === 'LIVE') return <p className="text-neutral-400">다른 탭이나 기기에서 송출 중인 방송입니다.</p>
   return <PrepareView broadcast={broadcast} />
 }
 
-/** 녹화 여부 → 화면 선택·미리보기 → 송출 시작. 토큰은 약 1분만 유효하므로 화면을 고른 뒤 송출 직전에 받는다. */
+/** 녹화 여부 → 화면(카메라) 선택·미리보기 → 송출 시작. 토큰은 약 1분만 유효하므로 화면을 고른 뒤 송출 직전에 받는다. */
 function PrepareView({ broadcast }: { broadcast: Broadcast }) {
+  const [camera] = useState(publishesCamera)
   const [step, setStep] = useState<Step>('record')
   const [record, setRecord] = useState(true)
   const [capture, setCapture] = useState<Capture | null>(null)
@@ -70,15 +85,31 @@ function PrepareView({ broadcast }: { broadcast: Broadcast }) {
     }
   }, [])
 
-  async function selectScreen() {
+  function adopt(next: Capture) {
+    // 송출 전에 "공유 중지"를 누르거나 카메라가 꺼지면 준비물만 버린다.
+    next.stream.getVideoTracks()[0].addEventListener('ended', () => setCapture((c) => (c === next ? null : c)))
+    setCapture(next)
+  }
+
+  async function selectSource() {
     setMessage(null)
     try {
-      const next = await captureScreen()
-      // 송출 전에 "공유 중지"를 누르면 준비물만 버린다.
-      next.stream.getVideoTracks()[0].addEventListener('ended', () => setCapture((c) => (c === next ? null : c)))
-      setCapture(next)
+      adopt(camera ? await captureCamera('user') : await captureScreen())
     } catch {
-      setMessage('화면 공유를 시작하지 못했습니다.')
+      setMessage(camera ? '카메라와 마이크를 쓸 수 없습니다. 브라우저 권한을 확인하세요.' : '화면 공유를 시작하지 못했습니다.')
+    }
+  }
+
+  async function flip() {
+    if (!capture) return
+    setMessage(null)
+    try {
+      const next = await flipCamera(capture)
+      adopt(next)
+      if (next.facing === capture.facing) setMessage(FLIP_FALLBACK_MESSAGE)
+    } catch {
+      setCapture(null)
+      setMessage('카메라를 바꾸지 못했습니다. 다시 켜 보세요.')
     }
   }
 
@@ -140,17 +171,23 @@ function PrepareView({ broadcast }: { broadcast: Broadcast }) {
       {step === 'capture' && (
         <div className="space-y-3">
           <p className="text-sm text-neutral-400">
-            녹화: {record ? '함' : '안 함'} · 마이크 소리가 함께 나갑니다. 공유 창에서 "탭 오디오 공유"(macOS) 또는 "시스템
-            오디오 공유"(Windows)를 켜면 화면 소리도 섞입니다.
+            녹화: {record ? '함' : '안 함'} ·{' '}
+            {camera
+              ? '송출 중 다른 앱으로 전환하거나 화면을 끄면 방송이 종료됩니다.'
+              : '마이크 소리가 함께 나갑니다. 공유 창에서 "탭 오디오 공유"(macOS) 또는 "시스템 오디오 공유"(Windows)를 켜면 화면 소리도 섞입니다.'}
           </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={selectScreen}
-              className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800"
-            >
-              {capture ? '화면 다시 고르기' : '공유할 화면 고르기'}
-            </button>
+          <div className="flex flex-wrap gap-2">
+            {camera && capture?.facing ? (
+              <FlipCameraButton facing={capture.facing} onClick={flip} disabled={starting} />
+            ) : (
+              <button
+                type="button"
+                onClick={selectSource}
+                className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800"
+              >
+                {camera ? '카메라 켜기' : capture ? '화면 다시 고르기' : '공유할 화면 고르기'}
+              </button>
+            )}
             <button
               type="button"
               onClick={start}
@@ -169,22 +206,56 @@ function PrepareView({ broadcast }: { broadcast: Broadcast }) {
   )
 }
 
-/** 송출 중. LIVE로 바뀌는지 SSE로 따라간다. */
-function PublishingView({ broadcast, stream, audioLabel }: { broadcast: Broadcast; stream: MediaStream; audioLabel: string }) {
+/** 송출 중. LIVE로 바뀌는지 SSE로 따라간다. 카메라 송출이면 전면/후면을 바꿀 수 있다. */
+function PublishingView({ broadcast, session }: { broadcast: Broadcast; session: PublishSession }) {
   const { data: latest } = useBroadcast(broadcast.id)
   useBroadcastEvents(broadcast.id, true)
   const current = latest ?? broadcast
+  const [flipping, setFlipping] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+
+  async function flip() {
+    setMessage(null)
+    setFlipping(true)
+    try {
+      if (!(await flipPublishingCamera())) setMessage(FLIP_FALLBACK_MESSAGE)
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : '카메라를 바꾸지 못했습니다.')
+    } finally {
+      setFlipping(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
       <Title broadcast={current} status={current.status} />
-      <Preview stream={stream} />
+      <Preview stream={session.stream} />
       <p className="text-sm text-neutral-300">
         {current.status === 'LIVE' ? '방송 중입니다.' : '송출을 연결했습니다. 미디어 서버가 영상을 받으면 방송이 시작됩니다.'} 다른
-        페이지로 옮겨도 송출은 이어집니다. 소리: {audioLabel}
+        페이지로 옮겨도 송출은 이어집니다. 소리: {session.audioLabel}
       </p>
-      <EndBroadcastButton broadcastId={broadcast.id} />
+      <div className="flex flex-wrap gap-2">
+        {session.facing && <FlipCameraButton facing={session.facing} onClick={flip} disabled={flipping} />}
+        <EndBroadcastButton broadcastId={broadcast.id} />
+      </div>
+      {message && <p className="text-sm text-red-400">{message}</p>}
     </div>
+  )
+}
+
+const FLIP_FALLBACK_MESSAGE = '반대쪽 카메라를 열지 못해 지금 카메라를 그대로 씁니다.'
+
+/** 전면/후면 카메라 전환 버튼. 라벨은 바꿀 방향이다. */
+function FlipCameraButton({ facing, onClick, disabled }: { facing: Facing; onClick: () => void; disabled: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-50"
+    >
+      {facing === 'user' ? '후면 카메라로' : '전면 카메라로'}
+    </button>
   )
 }
 

@@ -1,7 +1,23 @@
-// PC 송출 준비물: 화면 공유 영상과, 화면 소리·마이크를 Web Audio로 섞은 오디오 트랙 하나.
+// 송출 준비물. PC는 화면 공유 영상과, 화면 소리·마이크를 Web Audio로 섞은 오디오 트랙 하나. 모바일은 카메라와 마이크.
 
-/** 화면 공유 소리와 마이크를 담은 송출 준비물. 오디오는 Web Audio로 섞어 트랙 하나로 만든다. */
-export type Capture = { stream: MediaStream; sources: MediaStream[]; audioContext: AudioContext | null; audioLabel: string }
+export type Facing = 'user' | 'environment'
+
+/**
+ * 송출할 [stream]과 그 원본들. 끝낼 때 [sources]의 트랙을 모두 멈춘다.
+ * [facing]은 카메라 송출일 때 지금 쓰는 카메라(전면/후면)이고, 화면 공유면 null이다.
+ */
+export type Capture = {
+  stream: MediaStream
+  sources: MediaStream[]
+  audioContext: AudioContext | null
+  audioLabel: string
+  facing: Facing | null
+}
+
+/** 화면 공유를 못 하거나(모바일 브라우저) 주 입력이 터치인 기기는 카메라로 송출한다. */
+export function publishesCamera() {
+  return typeof navigator.mediaDevices?.getDisplayMedia !== 'function' || window.matchMedia('(pointer: coarse)').matches
+}
 
 /** 화면 소리가 없으면 마이크만, 마이크를 쓸 수 없으면 화면 소리만 나간다. */
 export async function captureScreen(): Promise<Capture> {
@@ -29,6 +45,47 @@ export async function captureScreen(): Promise<Capture> {
     sources: [display, ...(mic ? [mic] : [])],
     audioContext,
     audioLabel: labels.length > 0 ? labels.join(' + ') : '없음(영상만)',
+    facing: null,
+  }
+}
+
+const cameraVideo = (facing: Facing): MediaTrackConstraints => ({
+  facingMode: facing,
+  width: { ideal: 1280 },
+  height: { ideal: 720 },
+  frameRate: { ideal: 30 },
+})
+
+/** 모바일 송출 준비물: [facing] 카메라 영상과 마이크. */
+export async function captureCamera(facing: Facing): Promise<Capture> {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: cameraVideo(facing),
+    audio: { echoCancellation: true, noiseSuppression: true },
+  })
+  return { stream, sources: [stream], audioContext: null, audioLabel: '마이크', facing }
+}
+
+/**
+ * 카메라 송출 준비물을 반대쪽 카메라로 바꾼 새 준비물을 돌려주고, [capture]는 정리한다(마이크는 복제해 이어 쓴다).
+ * 카메라를 하나만 열 수 있는 기기(iOS)가 있어 지금 카메라를 먼저 끈다. 반대쪽을 못 열면 원래 카메라를 다시 열고,
+ * 그것도 안 되면 실패한다.
+ */
+export async function flipCamera(capture: Capture): Promise<Capture> {
+  if (!capture.facing) throw new Error('카메라 송출이 아닙니다.')
+  const current = capture.facing
+  const next: Facing = current === 'user' ? 'environment' : 'user'
+  const audio = capture.stream.getAudioTracks().map((t) => t.clone())
+  releaseCapture(capture)
+  const open = (facing: Facing) => navigator.mediaDevices.getUserMedia({ video: cameraVideo(facing) })
+  try {
+    const [facing, video] = await open(next)
+      .then((s) => [next, s] as const)
+      .catch(() => open(current).then((s) => [current, s] as const))
+    const stream = new MediaStream([...video.getVideoTracks(), ...audio])
+    return { ...capture, stream, sources: [stream], facing }
+  } catch (e) {
+    audio.forEach((t) => t.stop())
+    throw e
   }
 }
 

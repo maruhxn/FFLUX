@@ -57,7 +57,7 @@ export function BroadcastDetailPage() {
               to={`/broadcasts/${broadcast.id}/publish`}
               className="rounded-md bg-emerald-500 px-3 py-1.5 text-sm font-semibold text-neutral-950"
             >
-              방송 시작 (PC)
+              방송 시작
             </Link>
           )}
           {broadcast.status === 'LIVE' && <EndBroadcastButton broadcastId={broadcast.id} />}
