@@ -6,8 +6,8 @@ package com.maruhxn.fflux.common.error
  */
 sealed class BusinessException(override val message: String) : RuntimeException(message)
 
-/** 400: 요청 값이 규칙에 맞지 않음. */
-class BadRequestException(message: String) : BusinessException(message)
+/** 400: 요청 값이 규칙에 맞지 않음. [field]가 있으면 응답의 `errors`에 그 칸의 메시지로 담긴다. */
+class BadRequestException(message: String, val field: String? = null) : BusinessException(message)
 
 /** 401: 로그인이 필요함. */
 class UnauthorizedException(message: String) : BusinessException(message)

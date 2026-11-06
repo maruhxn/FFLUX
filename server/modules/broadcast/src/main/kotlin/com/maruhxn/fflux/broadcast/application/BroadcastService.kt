@@ -8,9 +8,10 @@ import com.maruhxn.fflux.broadcast.application.provided.ManageBroadcast
 import com.maruhxn.fflux.broadcast.application.provided.RegisterBroadcastCommand
 import com.maruhxn.fflux.broadcast.application.required.BroadcastRepository
 import com.maruhxn.fflux.broadcast.domain.Broadcast
+import com.maruhxn.fflux.broadcast.domain.BroadcastDescription
 import com.maruhxn.fflux.broadcast.domain.BroadcastStatus
+import com.maruhxn.fflux.broadcast.domain.BroadcastTitle
 import com.maruhxn.fflux.common.error.BadRequestException
-import com.maruhxn.fflux.common.error.ForbiddenException
 import com.maruhxn.fflux.common.error.NotFoundException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -25,23 +26,25 @@ class BroadcastService(
 ) : ManageBroadcast, FindBroadcast {
 
     override fun register(command: RegisterBroadcastCommand): Long {
-        val broadcast = Broadcast(
+        val broadcast = Broadcast.register(
             streamerId = command.streamerId,
             streamerNickname = command.streamerNickname,
-            title = normalizeTitle(command.title),
-            description = normalizeDescription(command.description),
-            createdAt = LocalDateTime.now(clock),
+            title = BroadcastTitle(command.title),
+            description = BroadcastDescription.of(command.description),
+            now = LocalDateTime.now(clock),
         )
         return broadcastRepository.save(broadcast).id
     }
 
     override fun edit(command: EditBroadcastCommand) {
-        val broadcast = lockOwnedBy(command.broadcastId, command.memberId)
-        broadcast.edit(normalizeTitle(command.title), normalizeDescription(command.description))
+        // 입력 검증(400)을 대상 조회(404)보다 먼저 한다.
+        val title = BroadcastTitle(command.title)
+        val description = BroadcastDescription.of(command.description)
+        findForUpdateOrThrow(command.broadcastId).edit(command.memberId, title, description)
     }
 
     override fun delete(broadcastId: Long, memberId: Long) {
-        lockOwnedBy(broadcastId, memberId).delete(LocalDateTime.now(clock))
+        findForUpdateOrThrow(broadcastId).delete(memberId, LocalDateTime.now(clock))
     }
 
     @Transactional(readOnly = true)
@@ -58,12 +61,9 @@ class BroadcastService(
     override fun findMine(streamerId: Long, cursor: Long?): BroadcastPage =
         page(status = null, streamerId = streamerId, cursor = cursor)
 
-    /** 상태 전이와 순서가 엇갈리지 않도록 행을 잠근 뒤 스트리머를 확인한다. */
-    private fun lockOwnedBy(broadcastId: Long, memberId: Long): Broadcast {
-        val broadcast = broadcastRepository.findForUpdate(broadcastId) ?: throw notFound()
-        if (!broadcast.isStreamer(memberId)) throw ForbiddenException("방송의 스트리머만 할 수 있습니다.")
-        return broadcast
-    }
+    /** 상태 전이와 순서가 엇갈리지 않도록 행을 잠근다. 스트리머 확인과 상태 조건은 엔티티가 판단한다. */
+    private fun findForUpdateOrThrow(broadcastId: Long): Broadcast =
+        broadcastRepository.findForUpdate(broadcastId) ?: throw notFound()
 
     /** 한 개를 더 읽어 다음 페이지가 있는지 판단한다. */
     private fun page(status: BroadcastStatus?, streamerId: Long?, cursor: Long?): BroadcastPage {
@@ -75,19 +75,14 @@ class BroadcastService(
         )
     }
 
-    private fun normalizeTitle(title: String) = title.trim()
-
-    /** 공백뿐인 설명은 없음으로 저장한다. */
-    private fun normalizeDescription(description: String?) = description?.trim()?.ifEmpty { null }
-
     private fun notFound() = NotFoundException("방송을 찾을 수 없습니다.")
 
     private fun Broadcast.toResult() = BroadcastResult(
         id = id,
         streamerId = streamerId,
         streamerNickname = streamerNickname,
-        title = title,
-        description = description,
+        title = title.value,
+        description = description?.value,
         status = status,
         createdAt = createdAt,
     )

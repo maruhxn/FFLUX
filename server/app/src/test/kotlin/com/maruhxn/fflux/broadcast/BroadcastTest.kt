@@ -58,9 +58,26 @@ class BroadcastTest : IntegrationTest() {
     }
 
     @Test
-    fun `제목이 비었거나 50자를 넘으면 등록은 400`() {
-        assertEquals(HttpStatus.BAD_REQUEST, registerResponse(streamer, " ").statusCode)
-        assertEquals(HttpStatus.BAD_REQUEST, registerResponse(streamer, "가".repeat(51)).statusCode)
+    fun `제목이 비었거나 50자를 넘으면 등록은 400이고 어느 칸이 틀렸는지 알려 준다`() {
+        listOf(" ", "가".repeat(51)).forEach { title ->
+            val response = registerResponse(streamer, title)
+            assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+            assertEquals(setOf("title"), (response.body!!["errors"] as Map<*, *>).keys)
+        }
+    }
+
+    @Test
+    fun `제목 길이는 앞뒤 공백을 지운 뒤 센다`() {
+        val title = "가".repeat(50)
+
+        val id = register(streamer, "  $title  ")
+
+        assertEquals(title, detail(id).body!!["title"])
+    }
+
+    @Test
+    fun `설명이 500자를 넘으면 등록은 400`() {
+        assertEquals(HttpStatus.BAD_REQUEST, registerResponse(streamer, "첫 방송", "가".repeat(501)).statusCode)
     }
 
     @Test
@@ -134,6 +151,14 @@ class BroadcastTest : IntegrationTest() {
         setStatus(id, "ENDED")
 
         assertEquals(HttpStatus.FORBIDDEN, edit(id, other, "바꾼 제목").statusCode)
+    }
+
+    @Test
+    fun `잘못된 제목으로 수정하면 없는 방송이나 타인의 방송이어도 400`() {
+        val id = register(streamer, "원래 제목")
+
+        assertEquals(HttpStatus.BAD_REQUEST, edit(999_999, streamer, " ").statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, edit(id, other, " ").statusCode)
     }
 
     @Test

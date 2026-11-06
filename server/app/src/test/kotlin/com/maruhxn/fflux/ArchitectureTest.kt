@@ -30,8 +30,8 @@ class ArchitectureTest {
     @ArchTest
     val `2 domain은 허용 목록만 참조한다`: ArchRule =
         classes().that().resideInAPackage(DOMAIN)
-            // KSP가 생성한 QueryDSL Q 클래스는 com.querydsl을 참조하므로 제외한다.
-            .and().areNotAssignableTo("com.querydsl.core.types.EntityPath")
+            // KSP가 생성한 QueryDSL Q 클래스(엔티티는 EntityPath, 값 객체는 BeanPath)는 com.querydsl을 참조하므로 제외한다.
+            .and().areNotAssignableTo("com.querydsl.core.types.Path")
             .should().onlyDependOnClassesThat().resideInAnyPackage(
                 "java..",
                 "kotlin..",

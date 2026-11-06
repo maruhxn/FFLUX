@@ -35,7 +35,9 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
             is NotFoundException -> HttpStatus.NOT_FOUND
             is ConflictException -> HttpStatus.CONFLICT
         }
-        return ProblemDetail.forStatusAndDetail(status, e.message)
+        val problem = ProblemDetail.forStatusAndDetail(status, e.message)
+        if (e is BadRequestException && e.field != null) problem.setProperty("errors", mapOf(e.field to e.message))
+        return problem
     }
 
     /** 동시에 같은 값을 넣어 유니크 제약에 걸린 경우(예: 같은 아이디로 동시 가입). */

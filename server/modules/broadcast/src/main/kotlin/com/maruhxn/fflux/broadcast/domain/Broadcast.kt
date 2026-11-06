@@ -1,7 +1,9 @@
 package com.maruhxn.fflux.broadcast.domain
 
 import com.maruhxn.fflux.common.error.ConflictException
+import com.maruhxn.fflux.common.error.ForbiddenException
 import jakarta.persistence.Column
+import jakarta.persistence.Embedded
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
@@ -15,15 +17,15 @@ import java.time.LocalDateTime
 
 /**
  * 스트리머가 등록한 1회성 라이브 세션. 스트리머 닉네임은 등록 시점 스냅샷이다.
- * 상태 조건(수정은 READY·LIVE, 삭제는 READY·ENDED)은 여기서 판단하고, 스트리머 확인은 application 서비스가 한다.
+ * 수정·삭제는 행위자가 스트리머인지(403) 먼저 보고, 그다음 상태 조건(409)을 본다.
  */
 @Entity
 @Table(name = "broadcast")
-class Broadcast(
+class Broadcast protected constructor(
     streamerId: Long,
     streamerNickname: String,
-    title: String,
-    description: String?,
+    title: BroadcastTitle,
+    description: BroadcastDescription?,
     createdAt: LocalDateTime,
 ) {
     @Id
@@ -36,12 +38,12 @@ class Broadcast(
     @Column(nullable = false, length = 12)
     val streamerNickname: String = streamerNickname
 
-    @Column(nullable = false, length = 50)
-    var title: String = title
+    @Embedded
+    var title: BroadcastTitle = title
         protected set
 
-    @Column(length = 500)
-    var description: String? = description
+    @Embedded
+    var description: BroadcastDescription? = description
         protected set
 
     @Enumerated(EnumType.STRING)
@@ -56,16 +58,33 @@ class Broadcast(
     var deletedAt: LocalDateTime? = null
         protected set
 
-    fun isStreamer(memberId: Long): Boolean = streamerId == memberId
-
-    fun edit(title: String, description: String?) {
+    /** 수정은 스트리머만, READY·LIVE에서만 한다. */
+    fun edit(memberId: Long, title: BroadcastTitle, description: BroadcastDescription?) {
+        checkStreamer(memberId)
         if (status == BroadcastStatus.ENDED) throw ConflictException("끝난 방송은 수정할 수 없습니다.")
         this.title = title
         this.description = description
     }
 
-    fun delete(now: LocalDateTime) {
+    /** 삭제(soft delete)는 스트리머만, READY·ENDED에서만 한다. */
+    fun delete(memberId: Long, now: LocalDateTime) {
+        checkStreamer(memberId)
         if (status == BroadcastStatus.LIVE) throw ConflictException("방송 중에는 삭제할 수 없습니다. 방송을 먼저 종료하세요.")
         deletedAt = now
+    }
+
+    private fun checkStreamer(memberId: Long) {
+        if (streamerId != memberId) throw ForbiddenException("방송의 스트리머만 할 수 있습니다.")
+    }
+
+    companion object {
+        /** 회원이 스트리머가 되어 READY 방송을 등록한다. */
+        fun register(
+            streamerId: Long,
+            streamerNickname: String,
+            title: BroadcastTitle,
+            description: BroadcastDescription?,
+            now: LocalDateTime,
+        ) = Broadcast(streamerId, streamerNickname, title, description, now)
     }
 }

@@ -9,9 +9,6 @@ import com.maruhxn.fflux.broadcast.application.provided.RegisterBroadcastCommand
 import com.maruhxn.fflux.broadcast.domain.BroadcastStatus
 import com.maruhxn.fflux.common.auth.LoginMember
 import com.maruhxn.fflux.common.auth.PublicApi
-import jakarta.validation.Valid
-import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.Size
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -32,7 +29,7 @@ class BroadcastController(
 ) {
 
     @PostMapping
-    fun register(member: LoginMember, @Valid @RequestBody request: BroadcastRequest): ResponseEntity<RegisterBroadcastResponse> {
+    fun register(member: LoginMember, @RequestBody request: BroadcastRequest): ResponseEntity<RegisterBroadcastResponse> {
         val id = manageBroadcast.register(
             RegisterBroadcastCommand(member.memberId, member.nickname, request.title, request.description),
         )
@@ -40,7 +37,7 @@ class BroadcastController(
     }
 
     @PatchMapping("/{id}")
-    fun edit(member: LoginMember, @PathVariable id: Long, @Valid @RequestBody request: BroadcastRequest): ResponseEntity<Unit> {
+    fun edit(member: LoginMember, @PathVariable id: Long, @RequestBody request: BroadcastRequest): ResponseEntity<Unit> {
         manageBroadcast.edit(EditBroadcastCommand(id, member.memberId, request.title, request.description))
         return ResponseEntity.noContent().build()
     }
@@ -65,11 +62,9 @@ class BroadcastController(
     fun detail(@PathVariable id: Long): BroadcastResult = findBroadcast.find(id)
 }
 
+/** 제목·설명의 규칙(공백 제거, 길이)은 도메인 값 객체가 검사한다. */
 data class BroadcastRequest(
-    @NotBlank(message = "제목을 입력하세요.")
-    @Size(max = 50, message = "제목은 50자 이하입니다.")
     val title: String,
-    @Size(max = 500, message = "설명은 500자 이하입니다.")
     val description: String?,
 )
 
