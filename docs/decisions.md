@@ -164,12 +164,19 @@ com.maruhxn.fflux.<module>
 ### ArchUnit 규칙 (`app` 모듈의 `ArchitectureTest`)
 
 1. domain은 port와 application을 참조하지 않는다.
-2. domain은 허용 목록만 참조한다: Kotlin/Java 표준 라이브러리, `jakarta.persistence`, Hibernate, `org.springframework..`, `common`, 자기 모듈 domain.
+2. domain은 허용 목록만 참조한다: Kotlin/Java 표준 라이브러리, `jakarta.persistence`, Hibernate, `org.springframework..`, `common`, 자기 모듈 domain. 단, KSP가 생성한 QueryDSL Q 클래스는 이 규칙에서 제외한다.
 3. application은 port를 참조하지 않는다.
 4. `port.web`은 `application.required`를 참조하지 않는다.
 5. `port.persistence` 외의 port는 `@Entity` 클래스를 참조하지 않는다. enum, 값 객체 등 그 밖의 domain 클래스는 참조할 수 있다.
 6. 모듈끼리 서로 참조하지 않는다(`common`, `app` 제외).
 7. `app`의 어댑터는 각 모듈의 `application.provided`/`application.required`만 참조한다.
+
+### 영속성과 시간
+
+- 스키마는 Flyway 마이그레이션으로 관리하고 `ddl-auto=validate`.
+- 동적 쿼리(조건 조합, 커서 페이지네이션)는 QueryDSL(OpenFeign 포크, KSP 생성)로 쓰고 `port.persistence`의 커스텀 리포지토리에만 둔다. 단순 조회와 조건부 UPDATE는 Spring Data 메서드·`@Query`.
+- 시간대는 `Asia/Seoul` 하나로 고정(JVM, `Clock`, MySQL, Hibernate JDBC). 시각 타입은 `LocalDateTime`.
+- 세부 규칙은 `.claude/rules/server-code-convention.md`.
 
 ### 인증 배치
 
