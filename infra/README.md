@@ -63,6 +63,8 @@ docker compose -f infra/compose.yml down
 - 와이파이 IP가 바뀌면 `.env`를 고치고 `up -d`를 다시 실행한다.
 - `getDisplayMedia`/`getUserMedia`는 HTTPS(또는 localhost)에서만 동작한다. 휴대폰은 반드시 터널 주소로 연다.
 - 터널 주소는 실행할 때마다 바뀐다.
+- 앱(#5 이후)을 휴대폰으로 확인할 때는 Vite 개발 서버에 터널을 연다(`cloudflared tunnel --url http://localhost:5173`). Vite가 `/api`는 Spring으로, `/media`는 이 Caddy로 넘긴다.
+- Quick Tunnel은 SSE를 전달하지 않는다. 터널 주소로 보면 방송 시작·종료·정보 변경이 바로 반영되지 않으니(시청 중 끊기면 종료는 반영된다) PC 시청은 `http://localhost:5173`으로 한다.
 
 ## 테스트 페이지 (#2 스파이크 기록)
 
