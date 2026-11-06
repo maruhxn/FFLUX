@@ -14,6 +14,8 @@
 		reverse_proxy mediamtx:8889 {
 			# MediaMTX가 주는 절대 경로 Location(/rec/x/whip/<id> 등)에 /media 접두사를 붙인다.
 			header_down Location ^/ /media/
+			# 시청 거절(401)에 붙는 Basic 인증 요구를 지운다. 남기면 브라우저가 자체 로그인 창을 띄운다.
+			header_down -Www-Authenticate
 		}
 	}
 
@@ -22,6 +24,7 @@
 		reverse_proxy mediamtx:8888 {
 			# HLS 쿠키 확인 리다이렉트(/rec/x/index.m3u8?cookieCheck=1)에 /media 접두사를 붙인다.
 			header_down Location ^/ /media/
+			header_down -Www-Authenticate
 		}
 	}
 

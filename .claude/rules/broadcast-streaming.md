@@ -54,5 +54,5 @@ paths:
 - 방송별 SSE 하나: `GET /api/broadcasts/{id}/events`(비로그인 허용, 없거나 삭제된 방송은 404). 이벤트 종류: 방송 상태 변화(`broadcast-status` `{status}`), 방송 정보 수정(`broadcast-updated` `{title, description}`), 채팅, 후원.
 - 이벤트 계약: `BroadcastStatusChanged`(실제 전이가 일어났을 때만), `BroadcastUpdated`(READY·LIVE 수정마다). 바뀐 값을 원시 타입으로 담아 `realtime`이 다시 조회하지 않게 한다.
 - 허브는 20초마다 heartbeat 주석을 보내 죽은 구독자를 지우고 중간 NAT가 연결을 끊지 않게 한다. emitter 제한 시간은 30분이고, 앱이 닫힐 때 모든 구독을 먼저 끝낸다(graceful shutdown이 기다리지 않게).
-- 클라이언트는 연결이 열릴 때마다(재연결 포함)와 이벤트를 받을 때 상세를 다시 읽는다. 놓친 이벤트는 이것으로 메운다. 폴링은 쓰지 않는다.
+- 클라이언트는 연결이 열릴 때마다(재연결 포함)와 이벤트를 받을 때 상세를 다시 읽는다. 놓친 이벤트는 이것으로 메운다. 플레이어 연결이 끊길 때도 한 번 다시 읽어, SSE가 막힌 네트워크(Cloudflare Quick Tunnel, 일부 프록시)에서도 종료가 반영되게 한다. 폴링은 쓰지 않는다.
 - `realtime` 모듈은 `common` 이벤트를 받아 인메모리 허브로 해당 방송 구독자에게 보낸다. 다른 모듈은 SSE를 직접 다루지 않고 이벤트만 발행한다.

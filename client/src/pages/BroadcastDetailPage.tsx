@@ -1,6 +1,7 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useMe } from '../auth/auth'
-import { formatDateTime, useBroadcast, useDeleteBroadcast, type BroadcastStatus } from '../broadcast/broadcast'
+import { broadcastDetailKey, formatDateTime, useBroadcast, useDeleteBroadcast, type BroadcastStatus } from '../broadcast/broadcast'
 import { useBroadcastEvents } from '../broadcast/events'
 import { EndBroadcastButton } from '../components/EndBroadcastButton'
 import { LivePlayer } from '../components/LivePlayer'
@@ -21,6 +22,7 @@ export function BroadcastDetailPage() {
   // ENDED는 더 바뀌지 않으므로 구독하지 않는다.
   useBroadcastEvents(id, !!broadcast && broadcast.status !== 'ENDED')
   const remove = useDeleteBroadcast(id)
+  const queryClient = useQueryClient()
 
   if (error) return <p className="text-red-400">{error.message}</p>
   if (!broadcast) return null
@@ -35,7 +37,12 @@ export function BroadcastDetailPage() {
   return (
     <div className="space-y-6">
       {broadcast.whepUrl && broadcast.hlsUrl ? (
-        <LivePlayer whepUrl={broadcast.whepUrl} hlsUrl={broadcast.hlsUrl} />
+        <LivePlayer
+          whepUrl={broadcast.whepUrl}
+          hlsUrl={broadcast.hlsUrl}
+          // SSE가 막힌 네트워크에서도 방송이 끝나 끊긴 것이면 종료 화면으로 바뀌게 상세를 다시 읽는다.
+          onDisconnect={() => void queryClient.invalidateQueries({ queryKey: broadcastDetailKey(id) })}
+        />
       ) : (
         <div className="flex aspect-video items-center justify-center rounded-lg bg-neutral-900 text-neutral-500">
           {PLAYER_PLACEHOLDER[broadcast.status]}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'react'
 import { hlsPlay } from '../broadcast/hls'
 import { closeSession } from '../broadcast/webrtc'
 import { whepPlay } from '../broadcast/whep'
@@ -11,8 +11,9 @@ const CONTROLS_IDLE_MS = 3000
 /**
  * LIVE 방송 플레이어. WHEP로 연결하고, 처음 연결이 안 되면 HLS로 넘어간다.
  * 자동재생 정책 때문에 소리를 끈 채 시작한다. 재생 중 끊기면 "다시 연결"로 처음부터 다시 붙는다.
+ * 끊길 때마다 [onDisconnect]를 부른다(방송이 끝나서 끊긴 것인지 확인하는 데 쓴다).
  */
-export function LivePlayer({ whepUrl, hlsUrl }: { whepUrl: string; hlsUrl: string }) {
+export function LivePlayer({ whepUrl, hlsUrl, onDisconnect }: { whepUrl: string; hlsUrl: string; onDisconnect: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [mode, setMode] = useState<Mode>('connecting')
@@ -21,13 +22,18 @@ export function LivePlayer({ whepUrl, hlsUrl }: { whepUrl: string; hlsUrl: strin
   const [paused, setPaused] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const controls = useAutoHide(CONTROLS_IDLE_MS)
+  const notifyDisconnect = useEffectEvent(onDisconnect)
 
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
     // 이번 연결 시도의 상태. 화면을 떠나면 cancelled가 되고, stop은 연결된 뒤 채운다.
     const run: { cancelled: boolean; stop: (() => void) | null } = { cancelled: false, stop: null }
-    const disconnect = () => !run.cancelled && setMode('disconnected')
+    const disconnect = () => {
+      if (run.cancelled) return
+      setMode('disconnected')
+      notifyDisconnect()
+    }
     setMode('connecting')
     // 다시 연결할 때도 자동재생이 막히지 않도록 소리를 끈 채 시작한다.
     video.muted = true
