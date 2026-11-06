@@ -1,4 +1,4 @@
-# FFLUX 로컬 개발 스택 (이슈 #2 미디어 스파이크): Caddy + MediaMTX
+# FFLUX 로컬 개발 스택: Caddy + MediaMTX. Spring은 호스트에서 bootRun으로 띄운다.
 # 실행: 저장소 루트에서 `docker compose -f infra/compose.yml --env-file .env up -d` (infra/README.md 참고)
 name: fflux-local
 
@@ -9,6 +9,12 @@ services:
     environment:
       # PC 내부 IP(쉼표로 여러 개). 비어 있으면 mediamtx.yml 값([])을 쓴다.
       MTX_WEBRTCADDITIONALHOSTS: ${WEBRTC_ADDITIONAL_HOSTS:-}
+      # MediaMTX가 인증 콜백과 훅으로 부를 Spring 주소. 로컬은 호스트의 bootRun(8080).
+      FFLUX_SERVER_URL: ${FFLUX_SERVER_URL:-http://host.docker.internal:8080}
+      MTX_AUTHHTTPADDRESS: ${FFLUX_SERVER_URL:-http://host.docker.internal:8080}/internal/mediamtx/auth
+    extra_hosts:
+      # Linux Docker에서도 host.docker.internal이 호스트를 가리키게 한다(Docker Desktop은 기본 제공).
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./mediamtx.yml:/mediamtx.yml:ro
       - ./hooks:/hooks:ro

@@ -1,4 +1,4 @@
-# FFLUX 로컬 미디어 스파이크용 MediaMTX 설정 (이슈 #2)
+# FFLUX MediaMTX 설정 (이슈 #2 스파이크, #6 Spring 연동)
 # 여기 없는 키는 MediaMTX 기본값을 쓴다. 키 이름은 bluenviron/mediamtx v1.21.x 기본 mediamtx.yml 기준.
 # 환경변수 MTX_<키 대문자>로 개별 키를 덮어쓸 수 있다(compose.yml의 MTX_WEBRTCADDITIONALHOSTS 참고).
 
@@ -6,19 +6,16 @@ logLevel: info
 
 ###############################################
 # 인증
-# 스파이크에서는 누구나 publish/read를 허용한다.
-# 서버 연동 단계에서 다음으로 바꾼다(.claude/rules/infra.md):
-#   authMethod: http
-#   authHTTPAddress: http://<spring>:8080/internal/mediamtx/auth
-#   authHTTPExclude: [{action: api}]
-authMethod: internal
-authInternalUsers:
-  - user: any
-    pass:
-    ips: []
-    permissions:
-      - action: publish
-      - action: read
+# publish/read마다 Spring에 묻는다(.claude/rules/broadcast-streaming.md). 2xx면 허용, 그 밖이면 거절.
+# WHIP의 Authorization: Bearer <송출 토큰>은 요청 본문의 token으로 간다.
+# 주소는 compose.yml이 MTX_AUTHHTTPADDRESS(FFLUX_SERVER_URL 기준)로 덮어쓴다.
+authMethod: http
+authHTTPAddress: http://host.docker.internal:8080/internal/mediamtx/auth
+# 제어 API 등은 콜백 대상에서 뺀다(내부망에서만 열린다).
+authHTTPExclude:
+  - action: api
+  - action: metrics
+  - action: pprof
 
 # 제어 API는 이번 스파이크에서 쓰지 않는다(송출 kick 구현 시 내부망 전용으로 켠다).
 api: false
@@ -55,6 +52,9 @@ webrtcAdditionalHosts: []
 pathDefaults:
   # 이미 송출 중인 path에 다른 송출이 들어오면 거절한다(중복 송출 방지).
   overridePublisher: no
+
+  # 실제 트랙을 받기 시작하면 Spring이 방송을 READY → LIVE로 바꾼다(MTX_PATH = rec/12 등).
+  runOnAvailable: sh /hooks/notify-server.sh available
 
   # 녹화 설정. 실제 녹화 여부는 아래 paths에서 path 접두사로 정한다.
   recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S-%f_%z

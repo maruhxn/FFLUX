@@ -1,6 +1,8 @@
 # 로컬 미디어 스택 (이슈 #2 미디어 스파이크)
 
-PC에 Caddy + MediaMTX를 Docker Compose로 띄우고, Cloudflare Quick Tunnel로 HTTPS 주소를 붙여 휴대폰에서도 송출·시청을 확인한다. 인증과 방송 도메인(Spring, MySQL)은 아직 붙이지 않았고, MediaMTX는 누구나 publish/read할 수 있게 열려 있다.
+PC에 Caddy + MediaMTX를 Docker Compose로 띄우고, Cloudflare Quick Tunnel로 HTTPS 주소를 붙여 휴대폰에서도 송출·시청을 확인한다.
+
+#6부터 MediaMTX는 송출·시청마다 Spring(`/internal/mediamtx/auth`)에 묻는다. 송출은 서버가 발급한 송출 토큰이 있어야 하고, 시청은 LIVE 방송만 된다. 송출이 시작되면 `runOnAvailable` 훅(`hooks/notify-server.sh`)이 Spring에 알려 방송이 LIVE가 된다. Spring은 호스트에서 `./gradlew :app:bootRun`(8080)으로 띄우고, MediaMTX는 `FFLUX_SERVER_URL`(기본 `http://host.docker.internal:8080`)로 닿는다. 그래서 아래 스파이크 테스트 페이지로는 더 이상 송출할 수 없고, 송출은 클라이언트의 방송 상세 → "방송 시작 (PC)"로 한다(`client`의 Vite가 `/media`를 이 스택의 Caddy로 넘긴다).
 
 ## 구성
 
@@ -9,6 +11,7 @@ PC에 Caddy + MediaMTX를 Docker Compose로 띄우고, Cloudflare Quick Tunnel�
 | `compose.yml` | Caddy, MediaMTX(`bluenviron/mediamtx:latest-ffmpeg`) |
 | `Caddyfile` | 로컬 HTTP(:80, 호스트 `HTTP_PORT`) same-origin 라우팅 |
 | `mediamtx.yml` | WHIP/WHEP/HLS, `rec/`·`live/` path 규칙, 녹화와 리먹싱 훅 |
+| `hooks/notify-server.sh` | path 훅(`runOnAvailable`)을 Spring `/internal/mediamtx/<이벤트>`로 알림 |
 | `hooks/remux-recording.sh` | 녹화 세그먼트(fMP4)를 faststart MP4로 리먹싱(`-c copy`) |
 | `spike/` | 빌드 없는 테스트 페이지(PC 송출, 모바일 송출, 시청, 녹화 목록) |
 | `data/` | 녹화 원본(`data/recordings`)과 리먹싱 결과(`data/vod`). git에 넣지 않는다 |
@@ -61,7 +64,9 @@ docker compose -f infra/compose.yml down
 - `getDisplayMedia`/`getUserMedia`는 HTTPS(또는 localhost)에서만 동작한다. 휴대폰은 반드시 터널 주소로 연다.
 - 터널 주소는 실행할 때마다 바뀐다.
 
-## 테스트 페이지
+## 테스트 페이지 (#2 스파이크 기록)
+
+송출 인증이 붙기 전(#2)에 쓰던 페이지다. 지금은 토큰이 없어 송출이 거절되고, 시청 페이지는 LIVE 방송의 path로만 재생된다.
 
 | 페이지 | 내용 |
 |---|---|
