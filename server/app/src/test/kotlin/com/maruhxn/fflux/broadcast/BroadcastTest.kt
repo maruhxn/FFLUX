@@ -16,7 +16,7 @@ import kotlin.test.assertNull
 
 /**
  * 방송 관리 API의 인가 매트릭스(비로그인 / 타인 / 스트리머)와 상태 조건.
- * LIVE·ENDED로 바꾸는 경로(#6, #8)가 아직 없어서 준비 단계에서만 상태를 DB에 직접 쓴다.
+ * LIVE는 송출 흐름(토큰·인증 콜백·훅)을, ENDED는 아직 없는 종료(#8)를 거쳐야 해서 준비 단계에서만 상태를 DB에 직접 쓴다.
  */
 class BroadcastTest : IntegrationTest() {
 

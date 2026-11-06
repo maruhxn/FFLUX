@@ -28,7 +28,7 @@ paths:
 
 ## 송출 토큰
 
-1. `POST /api/broadcasts/{id}/publish-token` (body: `record`): 세션 인증, 스트리머 본인, `READY`, 같은 스트리머의 다른 `LIVE` 방송 없음 확인.
+1. `POST /api/broadcasts/{id}/publish-token` (body: `record`): 세션 인증, 스트리머 본인, `READY`, 이미 소비된 토큰 없음(있으면 409, 경로가 바뀌지 않게), 같은 스트리머의 다른 `LIVE` 방송 없음 확인.
 2. 같은 방송의 미소비 토큰을 무효화하고 `SecureRandom` 토큰을 새로 발급한다. TTL 약 1분, 방송 ID에 바인딩, DB에는 SHA-256 해시만 저장한다.
 3. `record` 값을 `broadcast.recordingEnabled`에 저장하고, `mediaPath`를 `rec/{id}`(녹화) 또는 `live/{id}`(미녹화)로 정한다.
 4. 원본 토큰과 WHIP URL을 반환한다. 클라이언트는 WHIP 요청의 `Authorization: Bearer`로 보낸다.

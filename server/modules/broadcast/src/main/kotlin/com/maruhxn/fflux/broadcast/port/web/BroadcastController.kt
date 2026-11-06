@@ -4,6 +4,8 @@ import com.maruhxn.fflux.broadcast.application.provided.BroadcastPage
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastResult
 import com.maruhxn.fflux.broadcast.application.provided.EditBroadcastCommand
 import com.maruhxn.fflux.broadcast.application.provided.FindBroadcast
+import com.maruhxn.fflux.broadcast.application.provided.IssuePublishToken
+import com.maruhxn.fflux.broadcast.application.provided.IssuePublishTokenCommand
 import com.maruhxn.fflux.broadcast.application.provided.ManageBroadcast
 import com.maruhxn.fflux.broadcast.application.provided.RegisterBroadcastCommand
 import com.maruhxn.fflux.broadcast.domain.BroadcastStatus
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController
 class BroadcastController(
     private val manageBroadcast: ManageBroadcast,
     private val findBroadcast: FindBroadcast,
+    private val issuePublishToken: IssuePublishToken,
 ) {
 
     @PostMapping
@@ -46,6 +49,13 @@ class BroadcastController(
     fun delete(member: LoginMember, @PathVariable id: Long): ResponseEntity<Unit> {
         manageBroadcast.delete(id, member.memberId)
         return ResponseEntity.noContent().build()
+    }
+
+    @PostMapping("/{id}/publish-token")
+    fun publishToken(member: LoginMember, @PathVariable id: Long, @RequestBody request: PublishTokenRequest): PublishTokenResponse {
+        val result = issuePublishToken.issue(IssuePublishTokenCommand(id, member.memberId, request.record))
+        // 미디어 서버는 같은 도메인의 /media 아래에 있다(Caddy가 넘긴다).
+        return PublishTokenResponse(token = result.token, whipUrl = "/media/${result.mediaPath}/whip")
     }
 
     @PublicApi
@@ -69,3 +79,10 @@ data class BroadcastRequest(
 )
 
 data class RegisterBroadcastResponse(val id: Long)
+
+data class PublishTokenRequest(val record: Boolean)
+
+/** [token]은 WHIP 요청의 `Authorization: Bearer`로 보낸다. 로그에 남지 않도록 [toString]에서 가린다. */
+data class PublishTokenResponse(val token: String, val whipUrl: String) {
+    override fun toString() = "PublishTokenResponse(token=****, whipUrl=$whipUrl)"
+}

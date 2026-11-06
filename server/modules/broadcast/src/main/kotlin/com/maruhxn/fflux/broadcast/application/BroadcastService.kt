@@ -7,6 +7,7 @@ import com.maruhxn.fflux.broadcast.application.provided.FindBroadcast
 import com.maruhxn.fflux.broadcast.application.provided.ManageBroadcast
 import com.maruhxn.fflux.broadcast.application.provided.RegisterBroadcastCommand
 import com.maruhxn.fflux.broadcast.application.required.BroadcastRepository
+import com.maruhxn.fflux.broadcast.application.required.PublishTokenRepository
 import com.maruhxn.fflux.broadcast.domain.Broadcast
 import com.maruhxn.fflux.broadcast.domain.BroadcastDescription
 import com.maruhxn.fflux.broadcast.domain.BroadcastStatus
@@ -22,6 +23,7 @@ import java.time.LocalDateTime
 @Transactional
 class BroadcastService(
     private val broadcastRepository: BroadcastRepository,
+    private val publishTokenRepository: PublishTokenRepository,
     private val clock: Clock,
 ) : ManageBroadcast, FindBroadcast {
 
@@ -44,7 +46,9 @@ class BroadcastService(
     }
 
     override fun delete(broadcastId: Long, memberId: Long) {
-        findForUpdateOrThrow(broadcastId).delete(memberId, LocalDateTime.now(clock))
+        val now = LocalDateTime.now(clock)
+        findForUpdateOrThrow(broadcastId).delete(memberId, now)
+        publishTokenRepository.revokeUnconsumed(broadcastId, now)
     }
 
     @Transactional(readOnly = true)

@@ -8,7 +8,7 @@ interface ManageBroadcast {
     /** 없거나 삭제됐으면 404, 스트리머가 아니면 403, ENDED면 409. */
     fun edit(command: EditBroadcastCommand)
 
-    /** soft delete. 없거나 삭제됐으면 404, 스트리머가 아니면 403, LIVE면 409. */
+    /** soft delete하고 미소비 송출 토큰을 무효화한다. 없거나 삭제됐으면 404, 스트리머가 아니면 403, LIVE면 409. */
     fun delete(broadcastId: Long, memberId: Long)
 }
 

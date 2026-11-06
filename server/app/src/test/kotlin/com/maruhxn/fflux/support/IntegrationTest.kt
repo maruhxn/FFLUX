@@ -20,7 +20,7 @@ import org.springframework.web.client.RestClient
         "fflux.test-accounts.viewer-password=$TEST_VIEWER_PASSWORD",
     ],
 )
-@Import(TestcontainersConfiguration::class)
+@Import(TestcontainersConfiguration::class, TestClockConfiguration::class)
 abstract class IntegrationTest {
 
     @LocalServerPort
@@ -29,11 +29,15 @@ abstract class IntegrationTest {
     @Autowired
     private lateinit var databaseCleaner: DatabaseCleaner
 
+    @Autowired
+    protected lateinit var clock: TestClock
+
     protected lateinit var http: RestClient
 
     @BeforeEach
     fun setUpIntegrationTest() {
         databaseCleaner.clean()
+        clock.reset()
         http = RestClient.builder()
             .baseUrl("http://localhost:$port")
             .defaultStatusHandler({ true }) { _, _ -> }
