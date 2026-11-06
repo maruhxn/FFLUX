@@ -140,4 +140,4 @@ docker compose -f infra/compose.yml down
 - **WHIP 송출 거절**: `overridePublisher: no`라 같은 path에 이미 송출 중이면 거절된다. 다른 path를 쓰거나 기존 송출을 끈다. `rec/`·`live/` 이외의 path도 거절된다.
 - **Chrome 자동 재생 차단**: 재생 버튼을 한 번 더 누른다.
 - **녹화 파일**: 원본은 `infra/data/recordings`, 재생용은 `infra/data/vod`. 지우려면 스택을 내린 뒤 `infra/data`를 지운다.
-- **MediaMTX 버전**: `latest-ffmpeg` 태그를 쓴다(스파이크 시점 v1.21.3). 이 버전 설정에는 `runOnReady`/`runOnNotReady`가 없고 `runOnAvailable`/`runOnUnavailable`(및 `runOnOnline`/`runOnOffline`)이 있으므로, 서버 연동 시 훅 이름을 확인한다.
+- **MediaMTX 버전**: `latest-ffmpeg` 태그를 쓴다(스파이크 시점 v1.21.3). 방송 상태 전이 훅은 `runOnAvailable`/`runOnUnavailable`을 쓴다(옛 이름 `runOnReady`/`runOnNotReady`는 이 버전 설정에 없다).

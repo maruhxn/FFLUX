@@ -13,12 +13,12 @@ paths:
 
 | 전이 | 트리거 |
 |---|---|
-| `READY → LIVE` | MediaMTX `runOnReady` 훅 → `/internal/mediamtx/ready` (실제 트랙 수신 시점) |
-| `LIVE → ENDED` 비정상 | `runOnNotReady` 훅 → 즉시 ENDED (유예·재접속 없음) |
+| `READY → LIVE` | MediaMTX `runOnAvailable` 훅 → `/internal/mediamtx/available` (실제 트랙 수신 시점) |
+| `LIVE → ENDED` 비정상 | `runOnUnavailable` 훅 → `/internal/mediamtx/unavailable` → 즉시 ENDED (유예·재접속 없음) |
 | `LIVE → ENDED` 정상 | 종료 API: 세션·스트리머 본인 검증 → ENDED → MediaMTX API로 송출 세션 kick |
 
 - 프론트 요청으로 LIVE를 만들지 않는다. LIVE는 훅으로만 된다.
-- 정상 종료와 `runOnNotReady`는 경쟁할 수 있다. 둘 다 조건부 UPDATE(`WHERE status = 'LIVE'`)로 처리하고, 이미 ENDED면 성공으로 응답한다. `READY` 방송에 종료 API를 호출하면 409.
+- 정상 종료와 `runOnUnavailable`은 경쟁할 수 있다. 둘 다 조건부 UPDATE(`WHERE status = 'LIVE'`)로 처리하고, 이미 ENDED면 성공으로 응답한다. `READY` 방송에 종료 API를 호출하면 409.
 - 모든 상태 전이 UPDATE에 `deleted_at IS NULL`을 넣는다.
 - 한 스트리머의 `LIVE` 방송은 동시에 하나다. 송출 토큰 발급과 `publish` 인증에서 검사한다. 거의 동시 송출 시의 경합은 허용한다(`docs/decisions.md` 3절).
 - 수정은 `READY`/`LIVE`에서만(`LIVE` 중 수정은 `BroadcastUpdated` 이벤트로 SSE 반영), 삭제는 `READY`/`ENDED`에서만(LIVE면 409). 삭제 시 미소비 송출 토큰을 무효화한다. 삭제는 soft delete이고 `BroadcastDeleted` 이벤트로 녹화·댓글을 숨긴다. 후원 기록은 보존한다.

@@ -18,7 +18,7 @@ paths:
 - MediaMTX 설정 요점
   - `authMethod: http`, `authHTTPAddress`는 Spring `/internal/mediamtx/auth`, `authHTTPExclude`에 `api`.
   - `overridePublisher: no`.
-  - `runOnReady`/`runOnNotReady` → Spring `/internal/mediamtx/ready`·`not-ready`.
+  - `runOnAvailable`/`runOnUnavailable` → Spring `/internal/mediamtx/available`·`unavailable`. (MediaMTX 옛 이름 `runOnReady`/`runOnNotReady`는 쓰지 않는다)
   - path 정규식: `~^rec/` 는 `record: yes`, `~^live/` 는 `record: no`. `recordSegmentDuration`은 길게(예: 12h).
   - `runOnRecordSegmentComplete` → `ffmpeg -c copy -movflags +faststart` 리먹싱 후 Spring에 통지.
   - `webrtcAdditionalHosts`에 `fflux.kro.kr` 또는 VM 공인 IP(탄력적 IP).

@@ -57,8 +57,8 @@
 
 ### 상태 전이 트리거
 
-- `READY → LIVE`: MediaMTX `runOnReady` 훅(실제 트랙 수신 시점)이 `/internal/mediamtx/ready`를 호출.
-- `LIVE → ENDED`(비정상 종료): `runOnNotReady` 훅에서 즉시 ENDED. 모바일 앱 전환 시 방송이 종료됨을 README에 명시.
+- `READY → LIVE`: MediaMTX `runOnAvailable` 훅(스트림을 읽을 수 있게 된 시점, 실제 트랙 수신)이 `/internal/mediamtx/available`을 호출.
+- `LIVE → ENDED`(비정상 종료): `runOnUnavailable` 훅이 `/internal/mediamtx/unavailable`을 호출해 즉시 ENDED. 모바일 앱 전환 시 방송이 종료됨을 README에 명시.
 - `LIVE → ENDED`(정상 종료): 종료 API 호출 → 세션·스트리머 본인 검증 → ENDED → MediaMTX API로 송출 세션 kick → 클라이언트가 트랙과 PeerConnection 정리. `LIVE`가 아닌 방송에 종료 API를 호출하면 409(이미 `ENDED`면 성공).
 
 ### 방송 관리 규칙
