@@ -42,12 +42,19 @@ export function useBroadcastList(kind: BroadcastListKind) {
   })
 }
 
-/** [refetchInterval]을 주면 그 간격으로 다시 읽는다(SSE가 붙기 전 상태 확인용). */
-export function useBroadcast(id: number, refetchInterval?: number) {
+/** 상세. 시청 주소는 LIVE 방송에만 있다. */
+export type BroadcastDetail = Broadcast & { whepUrl: string | null; hlsUrl: string | null }
+
+/**
+ * [refetchInterval]을 주면 그 간격으로 다시 읽는다(SSE가 붙기 전 상태 확인용).
+ * 함수면 지금 읽은 방송을 보고 간격을 정한다(false면 다시 읽지 않는다).
+ */
+export function useBroadcast(id: number, refetchInterval?: number | ((broadcast?: BroadcastDetail) => number | false)) {
   return useQuery({
     queryKey: [...BROADCASTS_KEY, 'detail', id],
-    queryFn: () => api<Broadcast>(`/api/broadcasts/${id}`),
-    refetchInterval,
+    queryFn: () => api<BroadcastDetail>(`/api/broadcasts/${id}`),
+    refetchInterval:
+      typeof refetchInterval === 'function' ? (query) => refetchInterval(query.state.data) : refetchInterval,
   })
 }
 

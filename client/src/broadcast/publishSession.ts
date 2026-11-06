@@ -1,14 +1,15 @@
 import { useSyncExternalStore } from 'react'
 import { api } from '../api/client'
 import { releaseCapture, type Capture } from './capture'
-import { closeWhip, whipPublish, type WhipSession } from './whip'
+import { closeSession, type WebRtcSession } from './webrtc'
+import { whipPublish } from './whip'
 
 // 송출 세션은 앱 전체에 하나다. 송출 화면이 아니라 여기 두므로 사이트 안에서 페이지를 옮겨도 송출이 이어진다.
 // 방송이 끝나는 경우는 스트리머의 종료 요청(endBroadcast)과 송출 끊김(네트워크, 탭 닫기, "공유 중지")뿐이다.
 
 export type PublishSession = { broadcastId: number; stream: MediaStream; audioLabel: string }
 
-type Active = PublishSession & { capture: Capture; whip: WhipSession; statusTimer: number }
+type Active = PublishSession & { capture: Capture; whip: WebRtcSession; statusTimer: number }
 
 // 다른 탭·기기의 종료 요청이나 송출 끊김으로 방송이 끝났는지 이 간격으로 확인한다(SSE는 #9).
 const STATUS_CHECK_MS = 5000
@@ -45,7 +46,7 @@ async function release() {
   setActive(null)
   window.clearInterval(current.statusTimer)
   window.removeEventListener('beforeunload', confirmUnload)
-  await closeWhip(current.whip)
+  await closeSession(current.whip)
   releaseCapture(current.capture)
 }
 

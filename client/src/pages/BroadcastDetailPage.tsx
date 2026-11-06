@@ -2,7 +2,11 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { useMe } from '../auth/auth'
 import { formatDateTime, useBroadcast, useDeleteBroadcast, type BroadcastStatus } from '../broadcast/broadcast'
 import { EndBroadcastButton } from '../components/EndBroadcastButton'
+import { LivePlayer } from '../components/LivePlayer'
 import { StatusBadge } from '../components/StatusBadge'
+
+// 방송이 시작되거나 끝나는지 이 간격으로 다시 읽는다(SSE는 #9). ENDED는 더 바뀌지 않는다.
+const STATUS_CHECK_MS = 5000
 
 const PLAYER_PLACEHOLDER: Record<BroadcastStatus, string> = {
   READY: '방송 대기 중',
@@ -10,12 +14,12 @@ const PLAYER_PLACEHOLDER: Record<BroadcastStatus, string> = {
   ENDED: '종료된 방송',
 }
 
-/** 방송 상세. 플레이어는 #7에서 붙인다. */
+/** 방송 상세. LIVE면 플레이어로 바로 본다. */
 export function BroadcastDetailPage() {
   const id = Number(useParams().id)
   const navigate = useNavigate()
   const { data: me } = useMe()
-  const { data: broadcast, error } = useBroadcast(id)
+  const { data: broadcast, error } = useBroadcast(id, (b) => (b?.status === 'ENDED' ? false : STATUS_CHECK_MS))
   const remove = useDeleteBroadcast(id)
 
   if (error) return <p className="text-red-400">{error.message}</p>
@@ -30,9 +34,13 @@ export function BroadcastDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex aspect-video items-center justify-center rounded-lg bg-neutral-900 text-neutral-500">
-        {PLAYER_PLACEHOLDER[broadcast.status]}
-      </div>
+      {broadcast.whepUrl && broadcast.hlsUrl ? (
+        <LivePlayer whepUrl={broadcast.whepUrl} hlsUrl={broadcast.hlsUrl} />
+      ) : (
+        <div className="flex aspect-video items-center justify-center rounded-lg bg-neutral-900 text-neutral-500">
+          {PLAYER_PLACEHOLDER[broadcast.status]}
+        </div>
+      )}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <StatusBadge status={broadcast.status} />
