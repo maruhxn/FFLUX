@@ -25,3 +25,17 @@
 ## 보안
 
 비밀번호, 토큰, 결제 시크릿 키는 저장소에 넣지 않는다. 실제 값은 VM `.env`에만 두고, 새 환경변수를 추가하면 `.env.example`에 키와 예시 값을 함께 추가한다.
+
+## Agent skills
+
+### Issue tracker
+
+이슈는 GitHub Issues(`maruhxn/FLUX`)에서 `gh` CLI로 관리한다. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+기본 5개 라벨(`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`)을 그대로 쓴다. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+single-context: 루트 `GLOSSARY.md`와 `docs/adr/`를 쓴다. 기존 설계 결정은 `docs/decisions.md`에 있다. See `docs/agents/domain.md`.
