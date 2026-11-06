@@ -24,6 +24,8 @@ services:
       # WebRTC 미디어. WHIP/WHEP/HLS의 HTTP 포트(8889/8888)는 Caddy를 통해서만 연다.
       - "8189:8189/udp"
       - "8189:8189/tcp"
+      # Control API. 호스트의 bootRun(Spring)만 쓰도록 127.0.0.1에만 연다.
+      - "127.0.0.1:9997:9997"
 
   caddy:
     image: caddy:2

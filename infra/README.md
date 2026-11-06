@@ -2,7 +2,7 @@
 
 PC에 Caddy + MediaMTX를 Docker Compose로 띄우고, Cloudflare Quick Tunnel로 HTTPS 주소를 붙여 휴대폰에서도 송출·시청을 확인한다.
 
-#6부터 MediaMTX는 송출·시청마다 Spring(`/internal/mediamtx/auth`)에 묻는다. 송출은 서버가 발급한 송출 토큰이 있어야 하고, 시청은 LIVE 방송만 된다. 송출이 시작되면 `runOnAvailable` 훅(`hooks/notify-server.sh`)이 Spring에 알려 방송이 LIVE가 된다. Spring은 호스트에서 `./gradlew :app:bootRun`(8080)으로 띄우고, MediaMTX는 `FFLUX_SERVER_URL`(기본 `http://host.docker.internal:8080`)로 닿는다. 그래서 아래 스파이크 테스트 페이지로는 더 이상 송출할 수 없고, 송출은 클라이언트의 방송 상세 → "방송 시작 (PC)"로 한다(`client`의 Vite가 `/media`를 이 스택의 Caddy로 넘긴다).
+#6부터 MediaMTX는 송출·시청마다 Spring(`/internal/mediamtx/auth`)에 묻는다. 송출은 서버가 발급한 송출 토큰이 있어야 하고, 시청은 LIVE 방송만 된다. 송출이 시작되면 `runOnAvailable`, 끊기면 `runOnUnavailable` 훅(`hooks/notify-server.sh`)이 Spring에 알려 방송이 LIVE·ENDED가 된다. 종료 요청 뒤에는 Spring이 Control API(`127.0.0.1:9997`)로 송출 세션을 kick한다. Spring은 호스트에서 `./gradlew :app:bootRun`(8080)으로 띄우고, MediaMTX는 `FFLUX_SERVER_URL`(기본 `http://host.docker.internal:8080`)로 닿는다. 그래서 아래 스파이크 테스트 페이지로는 더 이상 송출할 수 없고, 송출은 클라이언트의 방송 상세 → "방송 시작 (PC)"로 한다(`client`의 Vite가 `/media`를 이 스택의 Caddy로 넘긴다).
 
 ## 구성
 
@@ -11,7 +11,7 @@ PC에 Caddy + MediaMTX를 Docker Compose로 띄우고, Cloudflare Quick Tunnel�
 | `compose.yml` | Caddy, MediaMTX(`bluenviron/mediamtx:latest-ffmpeg`) |
 | `Caddyfile` | 로컬 HTTP(:80, 호스트 `HTTP_PORT`) same-origin 라우팅 |
 | `mediamtx.yml` | WHIP/WHEP/HLS, `rec/`·`live/` path 규칙, 녹화와 리먹싱 훅 |
-| `hooks/notify-server.sh` | path 훅(`runOnAvailable`)을 Spring `/internal/mediamtx/<이벤트>`로 알림 |
+| `hooks/notify-server.sh` | path 훅(`runOnAvailable`, `runOnUnavailable`)을 Spring `/internal/mediamtx/<이벤트>`로 알림 |
 | `hooks/remux-recording.sh` | 녹화 세그먼트(fMP4)를 faststart MP4로 리먹싱(`-c copy`) |
 | `spike/` | 빌드 없는 테스트 페이지(PC 송출, 모바일 송출, 시청, 녹화 목록) |
 | `data/` | 녹화 원본(`data/recordings`)과 리먹싱 결과(`data/vod`). git에 넣지 않는다 |

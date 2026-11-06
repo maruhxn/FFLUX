@@ -17,8 +17,9 @@ authHTTPExclude:
   - action: metrics
   - action: pprof
 
-# 제어 API는 이번 스파이크에서 쓰지 않는다(송출 kick 구현 시 내부망 전용으로 켠다).
-api: false
+# 제어 API: Spring이 종료 요청 뒤 송출 세션을 kick한다. 콜백 인증에서 빠져 있으므로 내부망(로컬은 127.0.0.1)에만 연다.
+api: true
+apiAddress: :9997
 
 ###############################################
 # 프로토콜
@@ -55,6 +56,8 @@ pathDefaults:
 
   # 실제 트랙을 받기 시작하면 Spring이 방송을 READY → LIVE로 바꾼다(MTX_PATH = rec/12 등).
   runOnAvailable: sh /hooks/notify-server.sh available
+  # 송출이 끊기면(네트워크, 탭 닫기, kick) Spring이 방송을 LIVE → ENDED로 바꾼다.
+  runOnUnavailable: sh /hooks/notify-server.sh unavailable
 
   # 녹화 설정. 실제 녹화 여부는 아래 paths에서 path 접두사로 정한다.
   recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S-%f_%z
