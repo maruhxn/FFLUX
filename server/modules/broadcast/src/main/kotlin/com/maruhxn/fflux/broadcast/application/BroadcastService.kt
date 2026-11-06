@@ -1,5 +1,6 @@
 package com.maruhxn.fflux.broadcast.application
 
+import com.maruhxn.fflux.broadcast.application.provided.BroadcastDetailResult
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastPage
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastResult
 import com.maruhxn.fflux.broadcast.application.provided.EditBroadcastCommand
@@ -52,8 +53,10 @@ class BroadcastService(
     }
 
     @Transactional(readOnly = true)
-    override fun find(broadcastId: Long): BroadcastResult =
-        (broadcastRepository.findByIdAndDeletedAtIsNull(broadcastId) ?: throw notFound()).toResult()
+    override fun find(broadcastId: Long): BroadcastDetailResult {
+        val broadcast = broadcastRepository.findByIdAndDeletedAtIsNull(broadcastId) ?: throw notFound()
+        return BroadcastDetailResult(broadcast.toResult(), watchPath = broadcast.mediaPath.takeIf { broadcast.isWatchable() })
+    }
 
     @Transactional(readOnly = true)
     override fun findPublic(status: BroadcastStatus, cursor: Long?): BroadcastPage {

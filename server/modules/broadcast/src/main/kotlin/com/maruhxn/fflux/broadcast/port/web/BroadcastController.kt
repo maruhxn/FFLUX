@@ -1,13 +1,13 @@
 package com.maruhxn.fflux.broadcast.port.web
 
+import com.maruhxn.fflux.broadcast.application.provided.BroadcastDetailResult
+import com.maruhxn.fflux.broadcast.application.provided.BroadcastFinder
+import com.maruhxn.fflux.broadcast.application.provided.BroadcastModifier
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastPage
-import com.maruhxn.fflux.broadcast.application.provided.BroadcastResult
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastStatusChanger
 import com.maruhxn.fflux.broadcast.application.provided.EditBroadcastCommand
-import com.maruhxn.fflux.broadcast.application.provided.BroadcastFinder
-import com.maruhxn.fflux.broadcast.application.provided.PublishTokenIssuer
 import com.maruhxn.fflux.broadcast.application.provided.IssuePublishTokenCommand
-import com.maruhxn.fflux.broadcast.application.provided.BroadcastModifier
+import com.maruhxn.fflux.broadcast.application.provided.PublishTokenIssuer
 import com.maruhxn.fflux.broadcast.application.provided.RegisterBroadcastCommand
 import com.maruhxn.fflux.broadcast.domain.BroadcastStatus
 import com.maruhxn.fflux.common.auth.LoginMember
@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDateTime
 
 @RestController
 @RequestMapping("/api/broadcasts")
@@ -56,8 +57,7 @@ class BroadcastController(
     @PostMapping("/{id}/publish-token")
     fun publishToken(member: LoginMember, @PathVariable id: Long, @RequestBody request: PublishTokenRequest): PublishTokenResponse {
         val result = publishTokenIssuer.issue(IssuePublishTokenCommand(id, member.memberId, request.record))
-        // 미디어 서버는 같은 도메인의 /media 아래에 있다(Caddy가 넘긴다).
-        return PublishTokenResponse(token = result.token, whipUrl = "/media/${result.mediaPath}/whip")
+        return PublishTokenResponse(token = result.token, whipUrl = MediaUrls.whip(result.mediaPath))
     }
 
     @PostMapping("/{id}/end")
@@ -77,7 +77,7 @@ class BroadcastController(
 
     @PublicApi
     @GetMapping("/{id}")
-    fun detail(@PathVariable id: Long): BroadcastResult = broadcastFinder.find(id)
+    fun detail(@PathVariable id: Long): BroadcastDetailResponse = BroadcastDetailResponse.of(broadcastFinder.find(id))
 }
 
 /** 제목·설명의 규칙(공백 제거, 길이)은 도메인 값 객체가 검사한다. */
@@ -93,4 +93,40 @@ data class PublishTokenRequest(val record: Boolean)
 /** [token]은 WHIP 요청의 `Authorization: Bearer`로 보낸다. 로그에 남지 않도록 [toString]에서 가린다. */
 data class PublishTokenResponse(val token: String, val whipUrl: String) {
     override fun toString() = "PublishTokenResponse(token=****, whipUrl=$whipUrl)"
+}
+
+/** 방송 상세. 시청 주소는 LIVE 방송에만 있다. WHEP가 안 되면 HLS로 재생한다. */
+data class BroadcastDetailResponse(
+    val id: Long,
+    val streamerId: Long,
+    val streamerNickname: String,
+    val title: String,
+    val description: String?,
+    val status: BroadcastStatus,
+    val createdAt: LocalDateTime,
+    val whepUrl: String?,
+    val hlsUrl: String?,
+) {
+    companion object {
+        fun of(result: BroadcastDetailResult) = with(result.broadcast) {
+            BroadcastDetailResponse(
+                id = id,
+                streamerId = streamerId,
+                streamerNickname = streamerNickname,
+                title = title,
+                description = description,
+                status = status,
+                createdAt = createdAt,
+                whepUrl = result.watchPath?.let(MediaUrls::whep),
+                hlsUrl = result.watchPath?.let(MediaUrls::hls),
+            )
+        }
+    }
+}
+
+/** 미디어 서버(MediaMTX)는 같은 도메인의 `/media` 아래에 있다(Caddy가 넘긴다). */
+private object MediaUrls {
+    fun whip(mediaPath: String) = "/media/$mediaPath/whip"
+    fun whep(mediaPath: String) = "/media/$mediaPath/whep"
+    fun hls(mediaPath: String) = "/media/$mediaPath/index.m3u8"
 }
