@@ -3,10 +3,12 @@ package com.maruhxn.fflux.broadcast.application
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastStatusChanger
 import com.maruhxn.fflux.broadcast.application.required.BroadcastRepository
 import com.maruhxn.fflux.broadcast.application.required.PublishTokenRepository
+import com.maruhxn.fflux.broadcast.domain.Broadcast
 import com.maruhxn.fflux.broadcast.domain.BroadcastStatus
 import com.maruhxn.fflux.broadcast.domain.PublishToken
 import com.maruhxn.fflux.common.error.ConflictException
 import com.maruhxn.fflux.common.error.NotFoundException
+import com.maruhxn.fflux.common.event.BroadcastStatusChanged
 import com.maruhxn.fflux.common.event.EventPublisherPort
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -51,7 +53,10 @@ class BroadcastStatusChangeService(
         val broadcast = broadcastRepository.findForUpdateByMediaPath(mediaPath)
             ?: return log.warn("송출 시작 확인: 방송이 없거나 삭제됨 path={}", mediaPath)
         try {
-            if (broadcast.confirmPublishStarted()) log.info("방송 LIVE 전환: id={}", broadcast.id)
+            if (broadcast.confirmPublishStarted()) {
+                log.info("방송 LIVE 전환: id={}", broadcast.id)
+                publishStatusChanged(broadcast)
+            }
         } catch (e: ConflictException) {
             log.warn("송출 시작 확인: 전이할 수 없음 id={} status={}", broadcast.id, broadcast.status)
         }
@@ -61,7 +66,10 @@ class BroadcastStatusChangeService(
         val broadcast = broadcastRepository.findForUpdateByMediaPath(mediaPath)
             ?: return log.warn("송출 끊김: 방송이 없거나 삭제됨 path={}", mediaPath)
         try {
-            if (broadcast.endByDisconnect()) log.info("방송 종료(송출 끊김): id={}", broadcast.id)
+            if (broadcast.endByDisconnect()) {
+                log.info("방송 종료(송출 끊김): id={}", broadcast.id)
+                publishStatusChanged(broadcast)
+            }
         } catch (e: ConflictException) {
             log.warn("송출 끊김: 전이할 수 없음 id={} status={}", broadcast.id, broadcast.status)
         }
@@ -71,7 +79,13 @@ class BroadcastStatusChangeService(
         val broadcast = broadcastRepository.findForUpdate(broadcastId) ?: throw NotFoundException("방송을 찾을 수 없습니다.")
         if (!broadcast.requestEnd(memberId)) return
         log.info("방송 종료(종료 요청): id={}", broadcast.id)
+        publishStatusChanged(broadcast)
         eventPublisher.publish(BroadcastEndRequested(broadcast.id, checkNotNull(broadcast.mediaPath)))
+    }
+
+    /** 전이가 실제로 일어났을 때만 부른다. 받는 쪽은 커밋 뒤에 받는다. */
+    private fun publishStatusChanged(broadcast: Broadcast) {
+        eventPublisher.publish(BroadcastStatusChanged(broadcast.id, broadcast.status.name))
     }
 
     private fun deny(mediaPath: String, reason: String): Boolean {

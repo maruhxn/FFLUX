@@ -48,6 +48,10 @@ abstract class IntegrationTest {
             .build()
     }
 
+    /** [path]의 SSE를 구독한다. 다 쓰면 닫는다. */
+    protected fun openSse(path: String, cookie: String? = null): SseSubscription =
+        SseSubscription.open("http://localhost:$port$path", cookie)
+
     /** 응답의 Set-Cookie에서 세션 쿠키(`SESSION=...`)를 꺼낸다. */
     protected fun sessionCookieOf(headers: HttpHeaders): String =
         headers[HttpHeaders.SET_COOKIE].orEmpty()

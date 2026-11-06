@@ -8,6 +8,9 @@ interface BroadcastFinder {
     /** 없거나 삭제됐으면 404. */
     fun find(broadcastId: Long): BroadcastDetailResult
 
+    /** 삭제되지 않은 방송이 있는지. */
+    fun exists(broadcastId: Long): Boolean
+
     /** 메인(LIVE)·지난 방송(ENDED) 목록. READY는 공개 목록이 아니라 400. */
     fun findPublic(status: BroadcastStatus, cursor: Long?): BroadcastPage
 

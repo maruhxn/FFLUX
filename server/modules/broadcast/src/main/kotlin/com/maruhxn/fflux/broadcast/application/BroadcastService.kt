@@ -15,6 +15,8 @@ import com.maruhxn.fflux.broadcast.domain.BroadcastStatus
 import com.maruhxn.fflux.broadcast.domain.BroadcastTitle
 import com.maruhxn.fflux.common.error.BadRequestException
 import com.maruhxn.fflux.common.error.NotFoundException
+import com.maruhxn.fflux.common.event.BroadcastUpdated
+import com.maruhxn.fflux.common.event.EventPublisherPort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -25,6 +27,7 @@ import java.time.LocalDateTime
 class BroadcastService(
     private val broadcastRepository: BroadcastRepository,
     private val publishTokenRepository: PublishTokenRepository,
+    private val eventPublisher: EventPublisherPort,
     private val clock: Clock,
 ) : BroadcastModifier, BroadcastFinder {
 
@@ -43,7 +46,9 @@ class BroadcastService(
     override fun edit(command: EditBroadcastCommand) {
         // 입력 검증(400)을 대상 조회(404)보다 먼저 한다.
         val (title, description) = titleAndDescription(command.title, command.description)
-        findForUpdateOrThrow(command.broadcastId).edit(command.memberId, title, description)
+        val broadcast = findForUpdateOrThrow(command.broadcastId)
+        broadcast.edit(command.memberId, title, description)
+        eventPublisher.publish(BroadcastUpdated(broadcast.id, broadcast.title.value, broadcast.description?.value))
     }
 
     override fun delete(broadcastId: Long, memberId: Long) {
@@ -57,6 +62,9 @@ class BroadcastService(
         val broadcast = broadcastRepository.findByIdAndDeletedAtIsNull(broadcastId) ?: throw notFound()
         return BroadcastDetailResult(broadcast.toResult(), watchPath = broadcast.mediaPath.takeIf { broadcast.isWatchable() })
     }
+
+    @Transactional(readOnly = true)
+    override fun exists(broadcastId: Long): Boolean = broadcastRepository.existsByIdAndDeletedAtIsNull(broadcastId)
 
     @Transactional(readOnly = true)
     override fun findPublic(status: BroadcastStatus, cursor: Long?): BroadcastPage {
