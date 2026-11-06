@@ -1,9 +1,11 @@
 import { Link, Outlet } from 'react-router'
 import { useLogout, useMe } from '../auth/auth'
+import { usePublishSession } from '../broadcast/publishSession'
 
 export function Layout() {
   const { data: me } = useMe()
   const logout = useLogout()
+  const publishing = usePublishSession()
 
   return (
     <div className="min-h-dvh bg-neutral-950 text-neutral-100">
@@ -24,6 +26,14 @@ export function Layout() {
           </nav>
           {me ? (
             <div className="flex items-center gap-3 text-sm">
+              {publishing && (
+                <Link
+                  to={`/broadcasts/${publishing.broadcastId}/publish`}
+                  className="rounded-md border border-red-700 px-3 py-1.5 font-semibold text-red-400 hover:bg-red-950"
+                >
+                  ● 송출 중
+                </Link>
+              )}
               <Link to="/broadcasts/new" className="rounded-md bg-emerald-500 px-3 py-1.5 font-semibold text-neutral-950">
                 방송 등록
               </Link>

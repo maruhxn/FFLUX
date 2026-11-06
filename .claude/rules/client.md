@@ -16,6 +16,7 @@ paths:
 - PC: `getDisplayMedia`(탭/시스템 소리 포함)와 `getUserMedia`(마이크)의 오디오를 Web Audio API로 섞어 오디오 트랙 하나로 보낸다. 화면 공유 소리가 없어도 마이크만으로 송출되게 한다.
 - 모바일: `getUserMedia` 카메라+마이크. 송출 중 Wake Lock을 건다.
 - 종료: 종료 API를 먼저 호출하고(서버가 ENDED 처리 후 kick), 응답 후 로컬 트랙과 PeerConnection을 정리한다.
+- 송출 세션(WHIP 연결, 화면·마이크 트랙)은 페이지 컴포넌트가 아니라 앱 전체 저장소(`broadcast/publishSession.ts`)가 들고 있다. 사이트 안 페이지 이동으로는 송출을 끊지 않는다. 끊는 경우는 종료 요청(방송 종료 버튼, 브라우저 "공유 중지")과 송출 끊김(연결 실패, 탭 닫기)뿐이고, 송출 중에는 `beforeunload` 확인창을 띄운다.
 
 ## 시청
 

@@ -1,6 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router'
 import { useMe } from '../auth/auth'
 import { formatDateTime, useBroadcast, useDeleteBroadcast, type BroadcastStatus } from '../broadcast/broadcast'
+import { EndBroadcastButton } from '../components/EndBroadcastButton'
 import { StatusBadge } from '../components/StatusBadge'
 
 const PLAYER_PLACEHOLDER: Record<BroadcastStatus, string> = {
@@ -51,6 +52,7 @@ export function BroadcastDetailPage() {
               방송 시작 (PC)
             </Link>
           )}
+          {broadcast.status === 'LIVE' && <EndBroadcastButton broadcastId={broadcast.id} />}
           {broadcast.status !== 'ENDED' && (
             <Link
               to={`/broadcasts/${broadcast.id}/edit`}

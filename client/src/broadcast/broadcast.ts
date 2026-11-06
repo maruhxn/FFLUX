@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
+import { endBroadcast } from './publishSession'
 
 export type BroadcastStatus = 'READY' | 'LIVE' | 'ENDED'
 
@@ -85,5 +86,14 @@ export function useIssuePublishToken(id: number) {
   return useMutation({
     mutationFn: (record: boolean) =>
       api<PublishToken>(`/api/broadcasts/${id}/publish-token`, { method: 'POST', body: { record } }),
+  })
+}
+
+/** 종료 요청. 이 탭에서 송출 중이면 송출 자원도 정리한다. */
+export function useEndBroadcast(id: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => endBroadcast(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: BROADCASTS_KEY }),
   })
 }

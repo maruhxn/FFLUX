@@ -79,6 +79,7 @@
 - `READY → LIVE`: MediaMTX `runOnAvailable` 훅(스트림을 읽을 수 있게 된 시점, 실제 트랙 수신)이 `/internal/mediamtx/available`을 호출.
 - `LIVE → ENDED`(송출 끊김): `runOnUnavailable` 훅이 `/internal/mediamtx/unavailable`을 호출해 즉시 ENDED. 모바일 앱 전환 시 방송이 종료됨을 README에 명시.
 - `LIVE → ENDED`(종료 요청): 종료 API 호출 → 세션·스트리머 본인 검증 → ENDED → MediaMTX API로 송출 세션 kick → 클라이언트가 트랙과 PeerConnection 정리. `LIVE`가 아닌 방송에 종료 API를 호출하면 409(이미 `ENDED`면 성공).
+- 방송을 끝내는 것은 종료 요청과 송출 끊김뿐이다. 스트리머가 사이트 안에서 다른 페이지로 옮겨도 송출은 이어진다(송출 연결을 송출 화면이 아니라 앱 전체에 하나 둔다). 탭 닫기·새로고침은 브라우저가 연결을 끊으므로 막을 수 없어 확인창만 띄우고, 실제로 닫히면 송출 끊김으로 ENDED. 브라우저의 "공유 중지"는 종료 요청으로 본다.
 
 ### 방송 관리 규칙
 
@@ -218,6 +219,7 @@ com.maruhxn.fflux.<module>
 
 - React + Vite + TypeScript, React Router, TanStack Query, Tailwind CSS. 별도 상태 관리 라이브러리는 쓰지 않는다.
 - 반응형 화면 하나, 송출 화면만 PC용(화면 공유)과 모바일용(카메라)으로 분리.
+- 송출 중에는 헤더에 "송출 중" 표시를 두어 어느 페이지에서든 송출 화면(방송 종료 버튼)으로 돌아가게 한다.
 
 ## 11. 테스트
 
