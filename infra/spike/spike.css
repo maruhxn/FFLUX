@@ -1,0 +1,18 @@
+* { box-sizing: border-box; }
+body { margin: 0 auto; max-width: 960px; padding: 16px; font: 15px/1.5 system-ui, sans-serif; color: #111; background: #fff; }
+h1 { font-size: 20px; }
+a { color: #0a58ca; }
+label { display: block; margin: 8px 0; }
+input[type="text"], select { padding: 6px 8px; font: inherit; width: 100%; max-width: 360px; }
+button { padding: 8px 14px; font: inherit; margin: 4px 4px 4px 0; cursor: pointer; }
+video { width: 100%; max-height: 60vh; background: #000; }
+pre { background: #f4f4f4; padding: 8px; white-space: pre-wrap; word-break: break-all; font-size: 13px; }
+.status { font-weight: 600; }
+.hint { color: #555; font-size: 13px; }
+nav a { margin-right: 12px; }
+@media (prefers-color-scheme: dark) {
+  body { color: #eee; background: #121212; }
+  a { color: #7ab7ff; }
+  pre { background: #222; }
+  .hint { color: #aaa; }
+}

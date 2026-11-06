@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>녹화 목록 - FFLUX 스파이크</title>
+  <link rel="stylesheet" href="spike.css">
+</head>
+<body>
+  <nav><a href="./">처음</a><a href="publish-pc.html">PC 송출</a><a href="publish-mobile.html">모바일 송출</a><a href="watch.html">시청</a></nav>
+  <h1>녹화 목록 (faststart MP4)</h1>
+  <p class="hint">송출을 끝내야 리먹싱된 파일이 생깁니다. 파일은 <code>/vod/rec/&lt;id&gt;/*.mp4</code>로 Caddy가 정적 서빙합니다.</p>
+  <button id="reload">새로고침</button>
+  <ul id="list"></ul>
+  <video id="video" controls playsinline></video>
+  <p id="info" class="hint"></p>
+  <h2>로그</h2>
+  <pre id="log"></pre>
+  <script src="spike.js"></script>
+  <script>
+    // Caddy file_server browse는 Accept: application/json 이면 디렉터리 목록을 JSON으로 준다.
+    async function listDir(url) {
+      const res = await fetch(url, { headers: { Accept: "application/json" } });
+      if (res.status === 404) return [];
+      if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
+      return res.json();
+    }
+
+    async function load() {
+      const list = $("list");
+      list.innerHTML = "";
+      try {
+        const files = [];
+        for (const dir of (await listDir("/vod/rec/")).filter((e) => e.is_dir)) {
+          for (const f of await listDir(`/vod/rec/${dir.name}`)) {
+            if (!f.is_dir && f.name.endsWith(".mp4")) files.push({ ...f, url: `/vod/rec/${dir.name}${encodeURIComponent(f.name)}`, label: `rec/${dir.name}${f.name}` });
+          }
+        }
+        files.sort((a, b) => b.mod_time.localeCompare(a.mod_time));
+        if (!files.length) list.innerHTML = "<li>녹화 없음</li>";
+        for (const f of files) {
+          const li = document.createElement("li");
+          const a = document.createElement("a");
+          a.href = f.url;
+          a.textContent = `${f.label} (${(f.size / 1024 / 1024).toFixed(1)} MB)`;
+          a.onclick = (e) => {
+            e.preventDefault();
+            play(f.url);
+          };
+          li.appendChild(a);
+          list.appendChild(li);
+        }
+      } catch (e) {
+        log(`목록 조회 실패: ${e.message}`);
+      }
+    }
+
+    function play(url) {
+      const video = $("video");
+      video.src = url;
+      video.play().catch((e) => log(`재생 실패: ${e.message}`));
+      $("info").textContent = url;
+    }
+
+    $("video").addEventListener("loadedmetadata", (e) => log(`메타데이터 로드: ${e.target.videoWidth}x${e.target.videoHeight}, ${e.target.duration.toFixed(1)}초`));
+    $("video").addEventListener("error", (e) => log(`video 오류: code=${e.target.error?.code} ${e.target.error?.message || ""}`));
+    $("reload").onclick = load;
+    load();
+  </script>
+</body>
+</html>

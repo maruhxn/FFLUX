@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>모바일 송출 - FFLUX 스파이크</title>
+  <link rel="stylesheet" href="spike.css">
+</head>
+<body>
+  <nav><a href="./">처음</a><a href="watch.html">시청</a><a href="recordings.html">녹화</a></nav>
+  <h1>모바일 송출 (카메라 + 마이크)</h1>
+  <label>path <input id="path" type="text" value="rec/mobile1"></label>
+  <label>카메라
+    <select id="facing">
+      <option value="user">전면</option>
+      <option value="environment">후면</option>
+    </select>
+  </label>
+  <button id="start">송출 시작</button>
+  <button id="stop" disabled>송출 종료</button>
+  <p class="status" id="status">대기</p>
+  <p>Wake Lock: <span id="wake">-</span></p>
+  <p>시청 링크: <a id="viewer" target="_blank"></a></p>
+  <video id="preview" autoplay muted playsinline></video>
+  <h2>협상된 코덱 (getStats, outbound-rtp)</h2>
+  <pre id="codecs">-</pre>
+  <h2>로그</h2>
+  <pre id="log"></pre>
+  <script src="spike.js"></script>
+  <script>
+    let session, media, wakeLock, stopStats;
+
+    $("path").addEventListener("input", updateLink);
+    updateLink();
+    function updateLink() {
+      $("viewer").href = $("viewer").textContent = viewerLink($("path").value);
+    }
+
+    // 송출 중 화면이 꺼지지 않게 한다. 탭이 다시 보이면 다시 건다(백그라운드로 가면 브라우저가 해제함).
+    async function acquireWakeLock() {
+      if (!("wakeLock" in navigator)) {
+        $("wake").textContent = "미지원";
+        return;
+      }
+      try {
+        wakeLock = await navigator.wakeLock.request("screen");
+        $("wake").textContent = "켜짐";
+        wakeLock.addEventListener("release", () => ($("wake").textContent = "해제됨"));
+      } catch (e) {
+        $("wake").textContent = `실패: ${e.message}`;
+      }
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (session && document.visibilityState === "visible") acquireWakeLock();
+    });
+
+    $("start").onclick = async () => {
+      $("start").disabled = true;
+      try {
+        media = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: $("facing").value, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+          audio: { echoCancellation: true, noiseSuppression: true },
+        });
+        $("preview").srcObject = media;
+        session = await whipPublish($("path").value, media);
+        stopStats = watchCodecs(session.pc, "outbound-rtp", $("codecs"));
+        await acquireWakeLock();
+        $("status").textContent = `송출 중: ${$("path").value}`;
+        $("stop").disabled = false;
+      } catch (e) {
+        log(`송출 실패: ${e.message}`);
+        await stop();
+      }
+    };
+
+    $("stop").onclick = stop;
+
+    async function stop() {
+      stopStats?.();
+      await closeSession(session);
+      session = null;
+      media?.getTracks().forEach((t) => t.stop());
+      media = null;
+      await wakeLock?.release();
+      wakeLock = null;
+      $("preview").srcObject = null;
+      $("status").textContent = "대기";
+      $("start").disabled = false;
+      $("stop").disabled = true;
+    }
+  </script>
+</body>
+</html>

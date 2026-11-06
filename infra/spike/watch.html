@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>시청 - FFLUX 스파이크</title>
+  <link rel="stylesheet" href="spike.css">
+</head>
+<body>
+  <nav><a href="./">처음</a><a href="publish-pc.html">PC 송출</a><a href="publish-mobile.html">모바일 송출</a><a href="recordings.html">녹화</a></nav>
+  <h1>시청 (WHEP → HLS 폴백)</h1>
+  <label>path <input id="path" type="text" value="rec/pc1"></label>
+  <label><input id="forceHls" type="checkbox"> HLS 강제(WHEP 건너뛰기)</label>
+  <button id="play">재생</button>
+  <button id="stop">정지</button>
+  <p class="status">재생 방식: <span id="mode">-</span></p>
+  <video id="video" controls autoplay playsinline></video>
+  <h2>수신 코덱 (WHEP일 때 getStats, inbound-rtp)</h2>
+  <pre id="codecs">-</pre>
+  <h2>로그</h2>
+  <pre id="log"></pre>
+  <script src="spike.js"></script>
+  <script>
+    let whep, hls, stopStats;
+    const video = $("video");
+    const params = new URLSearchParams(location.search);
+    if (params.get("path")) $("path").value = params.get("path");
+    if (params.get("hls") === "1") $("forceHls").checked = true;
+
+    $("play").onclick = async () => {
+      await stop();
+      const path = $("path").value;
+      // 재생 버튼 클릭(사용자 제스처) 안에서 소리를 켠다.
+      video.muted = false;
+      if (!$("forceHls").checked) {
+        try {
+          $("mode").textContent = "WHEP 연결 중…";
+          whep = await whepPlay(path, video);
+          $("mode").textContent = "WHEP (WebRTC)";
+          stopStats = watchCodecs(whep.pc, "inbound-rtp", $("codecs"));
+          video.play().catch((e) => log(`자동 재생 차단: ${e.message} (재생 버튼을 눌러 주세요)`));
+          return;
+        } catch (e) {
+          whep = null;
+          log(`WHEP 실패 → HLS 폴백: ${e.message}`);
+        }
+      }
+      try {
+        hls = await hlsPlay(path, video);
+        $("mode").textContent = hls.native ? "HLS (네이티브)" : "HLS (hls.js)";
+        $("codecs").textContent = "HLS 재생 중(WebRTC 통계 없음)";
+        video.play().catch((e) => log(`자동 재생 차단: ${e.message} (재생 버튼을 눌러 주세요)`));
+      } catch (e) {
+        $("mode").textContent = "실패";
+        log(`HLS 실패: ${e.message}`);
+      }
+    };
+
+    $("stop").onclick = stop;
+
+    async function stop() {
+      stopStats?.();
+      await closeSession(whep);
+      whep = null;
+      hls?.destroy();
+      hls = null;
+      video.srcObject = null;
+      video.removeAttribute("src");
+      video.load();
+      $("mode").textContent = "-";
+    }
+  </script>
+</body>
+</html>

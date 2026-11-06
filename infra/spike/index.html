@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FFLUX 미디어 스파이크</title>
+  <link rel="stylesheet" href="spike.css">
+</head>
+<body>
+  <h1>FFLUX 미디어 스파이크 (이슈 #2)</h1>
+  <p class="hint">임시 테스트 페이지입니다. 인증 없이 MediaMTX에 바로 송출·시청합니다. path는 <code>rec/&lt;id&gt;</code>(녹화) 또는 <code>live/&lt;id&gt;</code>(미녹화)만 허용됩니다.</p>
+  <ul>
+    <li><a href="publish-pc.html">PC 송출</a> — 화면 공유 + 탭/시스템 소리 + 마이크(Web Audio 믹싱), WHIP</li>
+    <li><a href="publish-mobile.html">모바일 송출</a> — 카메라(전/후면) + 마이크, Wake Lock, WHIP</li>
+    <li><a href="watch.html">시청</a> — WHEP, 실패 시 HLS 폴백</li>
+    <li><a href="recordings.html">녹화 목록</a> — faststart MP4 재생</li>
+  </ul>
+  <pre id="env"></pre>
+  <script>
+    document.getElementById("env").textContent = [
+      `origin: ${location.origin}`,
+      `secure context(HTTPS): ${window.isSecureContext}`,
+      `userAgent: ${navigator.userAgent}`,
+    ].join("\n");
+  </script>
+</body>
+</html>

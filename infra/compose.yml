@@ -1,0 +1,36 @@
+# FFLUX 로컬 개발 스택 (이슈 #2 미디어 스파이크): Caddy + MediaMTX
+# 실행: 저장소 루트에서 `docker compose -f infra/compose.yml --env-file .env up -d` (infra/README.md 참고)
+name: fflux-local
+
+services:
+  mediamtx:
+    image: bluenviron/mediamtx:latest-ffmpeg
+    restart: unless-stopped
+    environment:
+      # PC 내부 IP(쉼표로 여러 개). 비어 있으면 mediamtx.yml 값([])을 쓴다.
+      MTX_WEBRTCADDITIONALHOSTS: ${WEBRTC_ADDITIONAL_HOSTS:-}
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml:ro
+      - ./hooks:/hooks:ro
+      - ./data/recordings:/recordings
+      - ./data/vod:/vod
+    ports:
+      # WebRTC 미디어. WHIP/WHEP/HLS의 HTTP 포트(8889/8888)는 Caddy를 통해서만 연다.
+      - "8189:8189/udp"
+      - "8189:8189/tcp"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - mediamtx
+    ports:
+      - "${HTTP_PORT:-8000}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./spike:/srv/spike:ro
+      - ./data/vod:/srv/vod:ro
+      - caddy_data:/data
+
+volumes:
+  caddy_data:

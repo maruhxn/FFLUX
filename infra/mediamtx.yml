@@ -1,0 +1,76 @@
+# FFLUX 로컬 미디어 스파이크용 MediaMTX 설정 (이슈 #2)
+# 여기 없는 키는 MediaMTX 기본값을 쓴다. 키 이름은 bluenviron/mediamtx v1.21.x 기본 mediamtx.yml 기준.
+# 환경변수 MTX_<키 대문자>로 개별 키를 덮어쓸 수 있다(compose.yml의 MTX_WEBRTCADDITIONALHOSTS 참고).
+
+logLevel: info
+
+###############################################
+# 인증
+# 스파이크에서는 누구나 publish/read를 허용한다.
+# 서버 연동 단계에서 다음으로 바꾼다(.claude/rules/infra.md):
+#   authMethod: http
+#   authHTTPAddress: http://<spring>:8080/internal/mediamtx/auth
+#   authHTTPExclude: [{action: api}]
+authMethod: internal
+authInternalUsers:
+  - user: any
+    pass:
+    ips: []
+    permissions:
+      - action: publish
+      - action: read
+
+# 제어 API는 이번 스파이크에서 쓰지 않는다(송출 kick 구현 시 내부망 전용으로 켠다).
+api: false
+
+###############################################
+# 프로토콜
+# RTSP는 컨테이너 내부 테스트 스트림 주입용으로만 켜 둔다(호스트에 publish하지 않음).
+rtsp: true
+rtspTransports: [tcp]
+rtmp: false
+srt: false
+moq: false
+
+# HLS: WHEP 실패 시 폴백. Caddy가 /media/<path>/index.m3u8 을 8888로 넘긴다.
+hls: true
+hlsAddress: :8888
+# 기본값 lowLatency(LL-HLS)는 브라우저 WebRTC 송출에서 part 길이가 흔들려
+# "this will cause an error in iOS clients" 경고가 난다. 폴백 용도라 지연보다 호환성을 택해 일반 fMP4 HLS를 쓴다.
+hlsVariant: fmp4
+
+# WebRTC: WHIP 송출, WHEP 시청. 시그널링(HTTP)은 Caddy가 /media/<path>/whip|whep 를 8889로 넘기고,
+# 미디어는 8189 UDP/TCP로 브라우저와 직접 연결된다(터널은 HTTP만 전달).
+webrtc: true
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+webrtcLocalTCPAddress: :8189
+# 브라우저에 알려줄 호스트. Docker 안에서는 컨테이너 IP만 보이므로 PC 내부 IP를 넣어야 한다.
+# 로컬에서는 .env의 WEBRTC_ADDITIONAL_HOSTS → MTX_WEBRTCADDITIONALHOSTS 로 덮어쓴다.
+# AWS에서는 fflux.kro.kr 또는 탄력적 IP.
+webrtcAdditionalHosts: []
+
+###############################################
+# path 기본값
+pathDefaults:
+  # 이미 송출 중인 path에 다른 송출이 들어오면 거절한다(중복 송출 방지).
+  overridePublisher: no
+
+  # 녹화 설정. 실제 녹화 여부는 아래 paths에서 path 접두사로 정한다.
+  recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S-%f_%z
+  recordFormat: fmp4
+  # 방송 1건 = 파일 1개가 되도록 길게 잡는다.
+  recordSegmentDuration: 12h
+  # 원본 세그먼트를 자동 삭제하지 않는다.
+  recordDeleteAfter: 0s
+  # 세그먼트가 끝나면 faststart MP4로 리먹싱한다.
+  # 스파이크에서는 파일만 만들고, 서버 연동 단계에서 리먹싱 후 Spring 통지를 붙인다.
+  runOnRecordSegmentComplete: sh /hooks/remux-recording.sh
+
+###############################################
+# path 규칙. 여기 맞지 않는 path는 MediaMTX가 거절한다(all_others 없음).
+paths:
+  "~^rec/":
+    record: yes
+  "~^live/":
+    record: no

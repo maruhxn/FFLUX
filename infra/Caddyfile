@@ -1,0 +1,39 @@
+# FFLUX 로컬 개발용 Caddy (이슈 #2 미디어 스파이크)
+# 로컬에서는 HTTP로만 받고, HTTPS는 Cloudflare Quick Tunnel이 붙인다.
+# /internal/* 은 라우팅하지 않는다(아래 어느 handle도 MediaMTX·Spring으로 넘기지 않음).
+{
+	auto_https off
+	admin off
+}
+
+:80 {
+	# WHIP/WHEP 시그널링: /media/<path>/whip, /media/<path>/whep (+ 세션 리소스 /whip/<id>) → MediaMTX WebRTC(8889)
+	@webrtc path_regexp ^/media/.+/(whip|whep)(/.*)?$
+	handle @webrtc {
+		uri strip_prefix /media
+		reverse_proxy mediamtx:8889 {
+			# MediaMTX가 주는 절대 경로 Location(/rec/x/whip/<id> 등)에 /media 접두사를 붙인다.
+			header_down Location ^/ /media/
+		}
+	}
+
+	# HLS: /media/<path>/index.m3u8 등 → MediaMTX HLS(8888)
+	handle_path /media/* {
+		reverse_proxy mediamtx:8888 {
+			# HLS 쿠키 확인 리다이렉트(/rec/x/index.m3u8?cookieCheck=1)에 /media 접두사를 붙인다.
+			header_down Location ^/ /media/
+		}
+	}
+
+	# 리먹싱된 녹화 MP4 정적 서빙(Range 지원). 목록은 Accept: application/json 으로 받는다.
+	handle_path /vod/* {
+		root * /srv/vod
+		file_server browse
+	}
+
+	# 스파이크 테스트 페이지
+	handle {
+		root * /srv/spike
+		file_server
+	}
+}

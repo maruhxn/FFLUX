@@ -1,3 +1,7 @@
 .DS_Store
 .idea/
 .vscode/
+
+# 로컬 개발 환경변수와 미디어 스택 산출물(녹화 원본·리먹싱 MP4)
+.env
+infra/data/
