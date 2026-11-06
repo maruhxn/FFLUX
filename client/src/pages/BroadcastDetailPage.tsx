@@ -1,25 +1,25 @@
 import { Link, useNavigate, useParams } from 'react-router'
 import { useMe } from '../auth/auth'
 import { formatDateTime, useBroadcast, useDeleteBroadcast, type BroadcastStatus } from '../broadcast/broadcast'
+import { useBroadcastEvents } from '../broadcast/events'
 import { EndBroadcastButton } from '../components/EndBroadcastButton'
 import { LivePlayer } from '../components/LivePlayer'
 import { StatusBadge } from '../components/StatusBadge'
 
-// 방송이 시작되거나 끝나는지 이 간격으로 다시 읽는다(SSE는 #9). ENDED는 더 바뀌지 않는다.
-const STATUS_CHECK_MS = 5000
-
 const PLAYER_PLACEHOLDER: Record<BroadcastStatus, string> = {
   READY: '방송 대기 중',
   LIVE: '방송 중',
-  ENDED: '종료된 방송',
+  ENDED: '방송이 종료되었습니다',
 }
 
-/** 방송 상세. LIVE면 플레이어로 바로 본다. */
+/** 방송 상세. LIVE면 플레이어로 바로 보고, 방송이 시작·종료되거나 정보가 바뀌면 SSE로 바로 따라간다. */
 export function BroadcastDetailPage() {
   const id = Number(useParams().id)
   const navigate = useNavigate()
   const { data: me } = useMe()
-  const { data: broadcast, error } = useBroadcast(id, (b) => (b?.status === 'ENDED' ? false : STATUS_CHECK_MS))
+  const { data: broadcast, error } = useBroadcast(id)
+  // ENDED는 더 바뀌지 않으므로 구독하지 않는다.
+  useBroadcastEvents(id, !!broadcast && broadcast.status !== 'ENDED')
   const remove = useDeleteBroadcast(id)
 
   if (error) return <p className="text-red-400">{error.message}</p>

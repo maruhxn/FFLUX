@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router'
 import { useMe } from '../auth/auth'
 import { useBroadcast, useIssuePublishToken, type Broadcast } from '../broadcast/broadcast'
+import { useBroadcastEvents } from '../broadcast/events'
 import { captureScreen, releaseCapture, type Capture } from '../broadcast/capture'
 import { startPublish, usePublishSession } from '../broadcast/publishSession'
 import { EndBroadcastButton } from '../components/EndBroadcastButton'
@@ -168,17 +169,18 @@ function PrepareView({ broadcast }: { broadcast: Broadcast }) {
   )
 }
 
-/** 송출 중. LIVE로 바뀌는지 몇 초마다 다시 읽는다(SSE는 #9). */
+/** 송출 중. LIVE로 바뀌는지 SSE로 따라간다. */
 function PublishingView({ broadcast, stream, audioLabel }: { broadcast: Broadcast; stream: MediaStream; audioLabel: string }) {
-  const { data: latest } = useBroadcast(broadcast.id, 3000)
-  const status = latest?.status ?? broadcast.status
+  const { data: latest } = useBroadcast(broadcast.id)
+  useBroadcastEvents(broadcast.id, true)
+  const current = latest ?? broadcast
 
   return (
     <div className="space-y-4">
-      <Title broadcast={broadcast} status={status} />
+      <Title broadcast={current} status={current.status} />
       <Preview stream={stream} />
       <p className="text-sm text-neutral-300">
-        {status === 'LIVE' ? '방송 중입니다.' : '송출을 연결했습니다. 미디어 서버가 영상을 받으면 방송이 시작됩니다.'} 다른
+        {current.status === 'LIVE' ? '방송 중입니다.' : '송출을 연결했습니다. 미디어 서버가 영상을 받으면 방송이 시작됩니다.'} 다른
         페이지로 옮겨도 송출은 이어집니다. 소리: {audioLabel}
       </p>
       <EndBroadcastButton broadcastId={broadcast.id} />

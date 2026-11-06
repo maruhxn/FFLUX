@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { api } from '../api/client'
+import type { BroadcastDetail } from './broadcast'
+import { BROADCAST_STATUS_EVENT, broadcastEventsUrl, parseStatusMessage } from './events'
 import { releaseCapture, type Capture } from './capture'
 import { closeSession, type WebRtcSession } from './webrtc'
 import { whipPublish } from './whip'
@@ -9,10 +11,7 @@ import { whipPublish } from './whip'
 
 export type PublishSession = { broadcastId: number; stream: MediaStream; audioLabel: string }
 
-type Active = PublishSession & { capture: Capture; whip: WebRtcSession; statusTimer: number }
-
-// 다른 탭·기기의 종료 요청이나 송출 끊김으로 방송이 끝났는지 이 간격으로 확인한다(SSE는 #9).
-const STATUS_CHECK_MS = 5000
+type Active = PublishSession & { capture: Capture; whip: WebRtcSession; events: EventSource }
 
 let active: Active | null = null
 let snapshot: PublishSession | null = null
@@ -44,7 +43,7 @@ async function release() {
   const current = active
   if (!current) return
   setActive(null)
-  window.clearInterval(current.statusTimer)
+  current.events.close()
   window.removeEventListener('beforeunload', confirmUnload)
   await closeSession(current.whip)
   releaseCapture(current.capture)
@@ -56,11 +55,18 @@ async function release() {
  */
 export async function startPublish(broadcastId: number, capture: Capture, whipUrl: string, token: string) {
   const whip = await whipPublish(whipUrl, token, capture.stream)
-  const statusTimer = window.setInterval(async () => {
-    const broadcast = await api<{ status: string }>(`/api/broadcasts/${broadcastId}`).catch(() => null)
-    if (broadcast?.status === 'ENDED' && active?.whip === whip) void release()
-  }, STATUS_CHECK_MS)
-  setActive({ broadcastId, stream: capture.stream, audioLabel: capture.audioLabel, capture, whip, statusTimer })
+  // 다른 탭·기기의 종료 요청이나 송출 끊김으로 방송이 끝나면 이 탭의 송출 자원도 정리한다.
+  // 다시 연결되면 끊긴 사이 끝났을 수 있으니 상세로 확인한다.
+  const releaseIfEnded = (status: string | undefined) => {
+    if (status === 'ENDED' && active?.whip === whip) void release()
+  }
+  const events = new EventSource(broadcastEventsUrl(broadcastId))
+  events.addEventListener(BROADCAST_STATUS_EVENT, (e) => releaseIfEnded(parseStatusMessage(e).status))
+  events.addEventListener('open', async () => {
+    const broadcast = await api<BroadcastDetail>(`/api/broadcasts/${broadcastId}`).catch(() => null)
+    releaseIfEnded(broadcast?.status)
+  })
+  setActive({ broadcastId, stream: capture.stream, audioLabel: capture.audioLabel, capture, whip, events })
   window.addEventListener('beforeunload', confirmUnload)
   const video = capture.stream.getVideoTracks()[0]
   const stopSharing = () => void endBroadcast(broadcastId).catch(release)
