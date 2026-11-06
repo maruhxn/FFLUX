@@ -30,7 +30,7 @@
 
 ### Issue tracker
 
-이슈는 GitHub Issues(`maruhxn/FLUX`)에서 `gh` CLI로 관리한다. See `docs/agents/issue-tracker.md`.
+이슈는 GitHub Issues(`maruhxn/FFLUX`)에서 `gh` CLI로 관리한다. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
