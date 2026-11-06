@@ -9,7 +9,7 @@
 - `client/`: React + Vite + TypeScript, React Router, TanStack Query, Tailwind CSS. 반응형 SPA 하나로 PC와 모바일을 모두 지원한다(네이티브 앱 없음).
 - `server/`: Kotlin + Spring Boot, Gradle 멀티모듈 모듈러 모놀리스. MySQL 8, Spring Data JPA, Spring Security 세션 + Spring Session JDBC.
 - 미디어: MediaMTX 셀프호스팅. 송출 WHIP, 시청 WHEP(실패 시 HLS 폴백), 녹화 fMP4 → faststart MP4.
-- 배포: AWS VM 1대 + Docker Compose(Spring, MySQL, MediaMTX, Caddy). 도메인은 `fflux.kro.kr` 하나(서브도메인 없음)이고, Caddy가 HTTPS와 same-origin 라우팅을 맡는다(`/api` → Spring, `/media` → MediaMTX).
+- 배포: GCP VM 1대(서울) + Docker Compose(Spring, MySQL, MediaMTX, Caddy). 도메인은 `fflux.kro.kr` 하나(서브도메인 없음)이고, Caddy가 HTTPS와 same-origin 라우팅을 맡는다(`/api` → Spring, `/media` → MediaMTX).
 
 ## 핵심 도메인
 
@@ -20,7 +20,7 @@
 
 ## 작업 순서
 
-`docs/decisions.md` 12절의 순서를 따른다. 첫 마일스톤은 필수 기능이 실서버(HTTPS)와 실기기(PC, 휴대폰 LTE)에서 동작하는 것이다. 미디어 동작은 로컬 데스크톱 브라우저만으로 완료 판정하지 않는다. 개발은 로컬 + HTTPS 터널로 하고, AWS는 PC 송출·시청·종료가 갖춰진 뒤 LTE 확인부터 쓴다.
+`docs/decisions.md` 12절의 순서를 따른다. 첫 마일스톤은 필수 기능이 실서버(HTTPS)와 실기기(PC, 휴대폰 LTE)에서 동작하는 것이다. 미디어 동작은 로컬 데스크톱 브라우저만으로 완료 판정하지 않는다. 개발은 로컬 + HTTPS 터널로 하고, VM은 PC 송출·시청·종료가 갖춰진 뒤 LTE 확인부터 쓴다.
 
 ## 보안
 

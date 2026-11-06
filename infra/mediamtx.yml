@@ -45,7 +45,7 @@ webrtcLocalUDPAddress: :8189
 webrtcLocalTCPAddress: :8189
 # 브라우저에 알려줄 호스트. Docker 안에서는 컨테이너 IP만 보이므로 PC 내부 IP를 넣어야 한다.
 # 로컬에서는 .env의 WEBRTC_ADDITIONAL_HOSTS → MTX_WEBRTCADDITIONALHOSTS 로 덮어쓴다.
-# AWS에서는 fflux.kro.kr 또는 탄력적 IP.
+# VM(GCP)에서는 fflux.kro.kr 또는 고정 외부 IP.
 webrtcAdditionalHosts: []
 
 ###############################################

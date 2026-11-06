@@ -207,14 +207,14 @@ flowchart LR
   Phone["휴대폰<br/>LTE"] -. "192.168.10.132로 못 감" .-> NAT["공유기(NAT)"] --- PC["PC의 MediaMTX"]
   linkStyle 0 stroke:#d9534f,stroke-width:2px
 </pre></div>
-<div class="fig"><p class="cap">③ AWS: 서버가 공인 IP를 가지면 바깥에서도 바로 온다. 그래도 막히면 TURN이 중계</p>
+<div class="fig"><p class="cap">③ GCP VM: 서버가 공인 IP를 가지면 바깥에서도 바로 온다. 그래도 막히면 TURN이 중계</p>
 <pre class="mermaid">
 flowchart LR
-  Phone["휴대폰<br/>LTE"] -- "UDP 8189" --> VM["AWS VM의 MediaMTX<br/>공인 IP"]
+  Phone["휴대폰<br/>LTE"] -- "UDP 8189" --> VM["GCP VM의 MediaMTX<br/>공인 IP"]
   Phone -. "직접이 막히면" .-> TURN["TURN 서버<br/>(coturn)"] -.-> VM
 </pre></div>
-<p>로컬에서 LTE 시청이 WebRTC로 안 되고 HLS로 넘어간 이유가 ②다. 그래서 LTE의 WebRTC 확인은 공인 IP가 있는 AWS 단계(#11)로 미뤘다. MediaMTX 설정의 <code>webrtcAdditionalHosts</code>는 "answer에 이 주소도 후보로 넣어 줘"라는 뜻이다. 로컬에서는 PC 내부 IP, AWS에서는 도메인이나 공인 IP를 넣는다.</p>
-<p><b>TURN</b>은 양쪽이 끝내 직접 연결하지 못할 때 대신 패킷을 받아 넘겨 주는 중계 서버다. 일부 통신사 NAT는 직접 연결을 막아서 필요할 수 있다. FFLUX는 TURN 없이 시작하고, AWS에서 LTE가 실패할 때만 coturn을 추가하기로 했다.</p>
+<p>로컬에서 LTE 시청이 WebRTC로 안 되고 HLS로 넘어간 이유가 ②다. 그래서 LTE의 WebRTC 확인은 공인 IP가 있는 GCP VM 단계(#11)로 미뤘다. MediaMTX 설정의 <code>webrtcAdditionalHosts</code>는 "answer에 이 주소도 후보로 넣어 줘"라는 뜻이다. 로컬에서는 PC 내부 IP, GCP VM에서는 도메인이나 공인 IP를 넣는다.</p>
+<p><b>TURN</b>은 양쪽이 끝내 직접 연결하지 못할 때 대신 패킷을 받아 넘겨 주는 중계 서버다. 일부 통신사 NAT는 직접 연결을 막아서 필요할 수 있다. FFLUX는 TURN 없이 시작하고, GCP VM에서 LTE가 실패할 때만 coturn을 추가하기로 했다.</p>
 
 <!-- 5 -->
 <h2 id="whip">5. WHIP와 WHEP</h2>
@@ -336,7 +336,7 @@ flowchart LR
   C --> M["MediaMTX"]
   B == "UDP/TCP 8189<br/>영상 패킷" ==> M
 </pre></div>
-<div class="fig"><p class="cap">③ Spring까지 넣은 전체 모습 (AWS 배포 기준)</p>
+<div class="fig"><p class="cap">③ Spring까지 넣은 전체 모습 (GCP VM 배포 기준)</p>
 <pre class="mermaid">
 flowchart LR
   B["브라우저"] -- "HTTPS 443" --> C["Caddy"]

@@ -27,7 +27,7 @@ PC에 Caddy + MediaMTX를 Docker Compose로 띄우고, Cloudflare Quick Tunnel�
 
 `<path>`는 `rec/<id>`(녹화) 또는 `live/<id>`(미녹화)만 허용한다. 다른 path는 MediaMTX가 거절한다. `/internal/*`은 라우팅하지 않는다.
 
-미디어(RTP)는 터널을 거치지 않는다. 터널은 HTTP만 전달하므로 WHIP/WHEP 시그널링과 HLS만 터널로 가고, WebRTC 미디어는 휴대폰이 PC 내부 IP의 8189(UDP/TCP)로 직접 붙는다. 그래서 같은 와이파이에서만 WebRTC가 되고, LTE에서는 HLS만 된다(LTE의 WebRTC는 AWS 단계에서 확인).
+미디어(RTP)는 터널을 거치지 않는다. 터널은 HTTP만 전달하므로 WHIP/WHEP 시그널링과 HLS만 터널로 가고, WebRTC 미디어는 휴대폰이 PC 내부 IP의 8189(UDP/TCP)로 직접 붙는다. 그래서 같은 와이파이에서만 WebRTC가 되고, LTE에서는 HLS만 된다(LTE의 WebRTC는 VM 배포 단계에서 확인).
 
 ## 사전 준비
 
