@@ -26,12 +26,16 @@
 ## 3. 방송 도메인과 상태
 
 - 방송 1건 = 1회성 세션. 상태는 `READY → LIVE → ENDED`이고 ENDED에서 다시 송출할 수 없다.
-- 상태 전이는 조건부 UPDATE(`WHERE status = ...`)로 멱등하게 처리. 이미 목표 상태면 no-op으로 성공한다.
+- 상태 전이는 조건부 UPDATE(`WHERE status = ... AND deleted_at IS NULL`)로 멱등하게 처리. 이미 목표 상태면 no-op으로 성공한다.
+- `READY → ENDED` 전이는 없다. 송출하지 않은 방송은 삭제로만 정리한다.
+- 방송 등록 시 `READY`로 생성된다. 한 스트리머가 `READY` 방송을 여러 개 가질 수 있지만, 동시에 `LIVE`인 방송은 하나뿐이다.
+  - 송출 토큰 발급과 `publish` 인증에서 같은 스트리머의 다른 `LIVE` 방송이 있으면 409/거절.
+  - 두 방송을 거의 동시에 송출하면 둘 다 검사를 통과해 `LIVE`가 될 수 있다. 1인 개발 일정상 이 경합은 받아들인다.
 
 ### 송출 토큰
 
-1. 소유자가 `방송 시작` 모달에서 녹화 여부를 고르고 `POST /api/broadcasts/{id}/publish-token`(body: `record`)을 호출한다.
-2. Spring이 세션 인증, 소유자 여부, `READY` 상태를 검증한다.
+1. 스트리머가 `방송 시작` 모달에서 녹화 여부를 고르고 `POST /api/broadcasts/{id}/publish-token`(body: `record`)을 호출한다.
+2. Spring이 세션 인증, 스트리머 본인 여부, `READY` 상태, 같은 스트리머의 다른 `LIVE` 방송 없음을 검증한다.
 3. 같은 방송의 미소비 토큰을 무효화하고, 암호학적 랜덤 토큰을 새로 발급한다(TTL 약 1분, 방송 ID에 바인딩, DB에는 SHA-256 해시만 저장).
 4. 원본 토큰과 WHIP URL을 반환한다.
 
@@ -39,8 +43,8 @@
 
 | action | 처리 |
 |---|---|
-| `publish` | 토큰 해시 존재·미만료·미소비, 바인딩된 방송 ID와 path 일치, 방송 `READY` 확인 후 조건부 UPDATE로 원자적 소비(영향 행 1개일 때만 성공) |
-| `read` | 토큰 불필요, 방송이 `LIVE`일 때만 허용 |
+| `publish` | 토큰 해시 존재·미만료·미소비, 바인딩된 방송 ID와 path 일치, 방송 `READY`·미삭제, 같은 스트리머의 다른 `LIVE` 방송 없음 확인 후 조건부 UPDATE로 원자적 소비(영향 행 1개일 때만 성공) |
+| `read` | 토큰 불필요, 방송이 `LIVE`·미삭제일 때만 허용 |
 | `api` | `authHTTPExclude`로 제외, API 포트는 내부망에만 노출 |
 | 그 외 | 거절 |
 
@@ -51,21 +55,21 @@
 
 - `READY → LIVE`: MediaMTX `runOnReady` 훅(실제 트랙 수신 시점)이 `/internal/mediamtx/ready`를 호출.
 - `LIVE → ENDED`(비정상 종료): `runOnNotReady` 훅에서 즉시 ENDED. 모바일 앱 전환 시 방송이 종료됨을 README에 명시.
-- `LIVE → ENDED`(정상 종료): 종료 API 호출 → 세션·소유자 검증 → ENDED → MediaMTX API로 송출 세션 kick → 클라이언트가 트랙과 PeerConnection 정리.
+- `LIVE → ENDED`(정상 종료): 종료 API 호출 → 세션·스트리머 본인 검증 → ENDED → MediaMTX API로 송출 세션 kick → 클라이언트가 트랙과 PeerConnection 정리. `LIVE`가 아닌 방송에 종료 API를 호출하면 409(이미 `ENDED`면 성공).
 
 ### 방송 관리 규칙
 
-- 수정: `READY`, `LIVE`에서 소유자만. `ENDED`는 수정 불가.
-- 삭제: `LIVE` 중에는 409. `READY`/`ENDED`는 soft delete. 녹화와 댓글은 함께 숨기고 후원 기록은 보존.
+- 수정: `READY`, `LIVE`에서 스트리머만. `ENDED`는 수정 불가. `LIVE` 중 수정은 SSE `broadcast-updated` 이벤트로 시청자 화면에 바로 반영한다.
+- 삭제: `LIVE` 중에는 409. `READY`/`ENDED`는 soft delete. 녹화와 댓글은 함께 숨기고 후원 기록은 보존. 삭제 시 미소비 송출 토큰을 무효화한다.
 - 목록 노출
   - 메인: `LIVE` 방송
   - 지난 방송: `ENDED` 방송, 다시보기가 있으면 배지
-  - 내 방송: `READY` 포함, 소유자만
+  - 내 방송: `READY` 포함, 스트리머 본인만
   - soft delete된 방송은 어디에도 노출하지 않음
 
 ## 4. 실시간 갱신
 
-- 방송별 SSE 하나(`GET /api/broadcasts/{id}/events`)로 상태 변화, 채팅, 후원 알림을 보낸다. 쓰기는 REST.
+- 방송별 SSE 하나(`GET /api/broadcasts/{id}/events`)로 상태 변화, 방송 정보 수정, 채팅, 후원 알림을 보낸다. 쓰기는 REST.
 - Spring MVC `SseEmitter`, 서버 1대이므로 인메모리 허브.
 
 ## 5. 녹화와 다시보기
@@ -88,13 +92,17 @@
 | 저장 | DB 저장, 다시보기에서는 숨김 | DB 저장 |
 
 - 작성자 닉네임은 작성 시점 스냅샷으로 저장.
+- 치지직처럼 라이브에는 채팅, 다시보기에는 댓글을 둔다. 녹화하지 않은 방송에는 댓글이 없으므로 README 확인 절차에 "녹화를 켜고 방송 → 다시보기에서 댓글 확인"을 적는다.
+- 댓글 수정·삭제는 작성자만 한다. 스트리머도 남의 댓글을 지울 수 없다.
+- 후순위 후보: 채팅 다시보기(라이브 당시 채팅을 녹화 재생 시점에 맞춰 표시). 녹화 시작 시각과 채팅 시각을 맞추는 작업이 필요해 지금은 하지 않는다.
 
 ## 7. 후원
 
 - 토스페이먼츠 테스트 모드.
 - 흐름: 서버가 `Donation(PENDING, orderId, amount, broadcastId, donorId, streamerId)` 생성 → 결제위젯 결제 → successUrl 복귀 → 서버가 PENDING 금액과 요청 금액 일치, 토스 승인 API 결과, 후원 대상 확인 → `DONE`.
 - 웹훅도 수신. `orderId` 유니크 + `PENDING → DONE` 1회 전이로 같은 승인 통지가 반복돼도 한 번만 적립.
-- 후원 가능 시점: `LIVE`, `ENDED` 모두. 대상은 방송 소유자로 고정.
+- 후원 가능 시점: `LIVE`, `ENDED` 모두. 대상은 방송의 스트리머로 고정.
+- 스트리머는 자기 방송에 후원할 수 없다. 서버에서 403으로 거절하고, 자기 방송 화면에서는 후원 버튼을 숨긴다.
 - 금액: 1,000/5,000/10,000원 프리셋 + 직접 입력. 방송별 후원 내역과 합계 표시, LIVE 중에는 SSE로 알림.
 
 ## 8. 인증과 에러
@@ -103,7 +111,7 @@
 - 회원 필드: `username`(유니크), `password`(BCrypt), `nickname`. 이메일 인증·소셜 로그인 없음.
 - 테스트 계정 `streamer`, `viewer`를 시드로 넣고 로그인 화면에 "테스트 계정으로 로그인" 버튼 제공.
 - 에러 응답은 `ProblemDetail` + `@RestControllerAdvice`로 통일.
-  - 400 검증 실패, 401 비로그인, 403 소유자·작성자 아님, 404 대상 없음, 409 상태 위반
+  - 400 검증 실패, 401 비로그인, 403 스트리머·작성자 아님, 404 대상 없음, 409 상태 위반
 
 ## 9. 서버 아키텍처
 
@@ -165,7 +173,7 @@ com.maruhxn.fflux.<module>
 - 자격 증명 확인은 `member`의 provided 유스케이스(`AuthenticateMember`).
 - 세션 principal에는 `memberId`, `nickname`만 담는다.
 - 다른 모듈의 web 포트는 `common`의 `@LoginMember memberId: Long`으로 현재 사용자를 받는다. Spring Security 타입은 알지 못한다.
-- 소유자·작성자 권한 확인은 각 모듈의 application 서비스가 한다.
+- 스트리머·작성자 권한 확인은 각 모듈의 application 서비스가 한다.
 
 ## 10. 프론트엔드
 
@@ -174,7 +182,7 @@ com.maruhxn.fflux.<module>
 
 ## 11. 테스트
 
-- 인가 매트릭스(비로그인/소유자/타인 × API)를 Testcontainers MySQL 통합 테스트로 검증.
+- 인가 매트릭스(비로그인/스트리머·작성자/타인 × API)를 Testcontainers MySQL 통합 테스트로 검증.
 - 상태 전이, 토큰 소비, 후원 멱등을 테스트.
 - 프론트·미디어 E2E는 자동화하지 않고 README의 수동 확인 절차로 대체.
 
@@ -189,5 +197,5 @@ com.maruhxn.fflux.<module>
 7. 녹화와 다시보기
 8. 채팅
 9. 댓글
-10. 도네이션
+10. 후원
 11. 테스트 보강, README(실행 방법·기능 확인 절차), CI/CD, 최종 QA
