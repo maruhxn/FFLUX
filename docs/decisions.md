@@ -8,8 +8,12 @@
 - 도메인 `fflux.kro.kr` 하나 + Caddy 자동 HTTPS(`getDisplayMedia`/`getUserMedia`가 HTTPS에서만 동작). 모든 경로를 같은 호스트에 두므로 서브도메인은 쓰지 않는다. `kro.kr`은 Public Suffix List에 없어 Let's Encrypt 발급 한도를 다른 `kro.kr` 사용자와 공유한다. 발급이 막히면 Caddy의 ZeroSSL 폴백에 기댄다.
 - 같은 도메인(same-origin)으로 묶는다: 프론트 정적 파일, `/api` → Spring, `/media` → MediaMTX WHIP/WHEP/HLS.
 - `/internal/*`은 Caddy에서 라우팅하지 않고, Spring 8080 포트는 호스트에 publish하지 않는다(네트워크 격리로 내부 API 보호).
-- WebRTC 미디어 포트 UDP/TCP 8189를 VM에서 직접 개방. TURN 없이 시작하고, 스파이크에서 실패하면 coturn 추가.
+- WebRTC 미디어 포트 UDP/TCP 8189를 VM에서 직접 개방. TURN 없이 시작하고, AWS 배포 후 LTE 확인에서 실패하면 coturn 추가.
 - 비밀값은 VM `.env`에만 두고 저장소에는 `.env.example`만 커밋.
+- 개발 단계 비용을 줄이려고 개발은 로컬에서 한다. 같은 Docker Compose 스택을 PC에 띄우고, 휴대폰 접속용 HTTPS는 무료 터널(Cloudflare Quick Tunnel 또는 ngrok)로 붙인다.
+  - 터널은 HTTP만 전달하므로 WHIP/WHEP 시그널링과 HLS는 터널로, WebRTC 미디어는 같은 와이파이에서 PC 내부 IP(`webrtcAdditionalHosts`)로 직접 연결한다.
+  - 로컬에서는 같은 와이파이의 WebRTC 송출·시청과 LTE의 HLS 시청까지만 확인한다. LTE의 WebRTC 시청과 TURN 필요 여부는 AWS 배포 단계에서 확인한다.
+- AWS VM은 PC 송출·시청·종료가 갖춰진 뒤 처음 올려 LTE를 확인하고, 쓰지 않을 때는 멈춰 둔다.
 - 배포는 처음엔 VM에서 `git pull && docker compose up -d --build`, CI/CD(GitHub Actions)는 마무리 단계에서 추가.
 
 ## 2. 스트리밍
@@ -188,14 +192,15 @@ com.maruhxn.fflux.<module>
 
 ## 12. 작업 순서
 
-1. 인프라와 실기기 스파이크: PC 화면 공유+마이크 송출 → 휴대폰 LTE 시청, 휴대폰 카메라 송출 → PC 시청, H264 강제, HLS 폴백, 녹화 MP4 재생(iOS 포함)
+1. 로컬 미디어 스파이크(로컬 Docker Compose + HTTPS 터널): PC 화면 공유+마이크 송출 → 휴대폰 시청(같은 와이파이), 휴대폰 카메라 송출 → PC 시청, H264 강제, HLS 폴백(LTE 포함), 녹화 MP4 재생(iOS 포함)
 2. 멀티모듈 뼈대, `common`, ArchUnit
 3. 인증
 4. 방송 도메인: CRUD, soft delete, 상태 머신, 송출 토큰, MediaMTX 인증 콜백·훅, kick
 5. 송출·시청 UI(PC/모바일), 종료 흐름, SSE 상태 반영, Wake Lock
-6. 필수 기능 QA, 인가 테스트, 실기기 확인 ← 첫 마일스톤
-7. 녹화와 다시보기
-8. 채팅
-9. 댓글
-10. 후원
-11. 테스트 보강, README(실행 방법·기능 확인 절차), CI/CD, 최종 QA
+6. AWS 배포와 LTE 실기기 확인(PC 송출·시청·종료가 갖춰진 직후), 필요하면 coturn
+7. 필수 기능 QA, 인가 테스트, README, 실기기 확인 ← 첫 마일스톤
+8. 녹화와 다시보기
+9. 채팅
+10. 댓글
+11. 후원
+12. 테스트 보강, README(실행 방법·기능 확인 절차), CI/CD, 최종 QA
