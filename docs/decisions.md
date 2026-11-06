@@ -83,7 +83,8 @@
 - `runOnRecordSegmentComplete` 훅에서 `ffmpeg -c copy -movflags +faststart`로 MP4 리먹싱 후 Spring에 통지.
 - `Recording`: broadcastId, 파일 경로, 길이, 생성 시각, 상태(`PROCESSING → READY / FAILED`). 다시보기 목록에는 `READY`만 노출.
 - Caddy가 녹화 디렉터리를 정적 파일로 서빙(Range 지원), 프론트는 `<video>`로 재생.
-- iOS Safari의 Opus 포함 MP4/HLS 재생은 스파이크에서 확인하고, 안 되면 AAC 트랜스코딩을 추가.
+- iOS Safari에서 Opus 포함 녹화 MP4 재생을 로컬 스파이크(#2)에서 확인했다. AAC 트랜스코딩은 하지 않는다.
+- HLS 폴백은 LL-HLS 대신 일반 fMP4 HLS(`hlsVariant: fmp4`)를 쓴다. 브라우저 WHIP 송출에서 LL-HLS part 길이가 흔들려 iOS 호환 경고가 났기 때문이다(지연은 더 길다).
 
 ## 6. 채팅과 댓글
 

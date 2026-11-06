@@ -74,64 +74,64 @@ docker compose -f infra/compose.yml down
 
 ## 수용 기준별 확인 체크리스트
 
-각 항목을 직접 확인하고 결과 칸을 채운다. 기기·브라우저 버전도 함께 적는다.
+각 항목을 직접 확인하고 결과 칸을 채운다. 기기·브라우저 버전도 함께 적는다. (2026-11-06 첫 확인 때는 기기·브라우저 버전을 기록하지 않았다)
 
 ### 1. 한 명령으로 기동, 터널 HTTPS에서 테스트 페이지 열림
-- [ ] `docker compose -f infra/compose.yml --env-file .env up -d` 후 `http://localhost:8000` 열림
-- [ ] `cloudflared tunnel --url http://localhost:8000`의 https 주소가 PC와 휴대폰에서 열림, 첫 페이지의 `secure context(HTTPS): true`
+- [x] `docker compose -f infra/compose.yml --env-file .env up -d` 후 `http://localhost:8000` 열림
+- [x] `cloudflared tunnel --url http://localhost:8000`의 https 주소가 PC와 휴대폰에서 열림, 첫 페이지의 `secure context(HTTPS): true`
 
-결과:
+결과: 2026-11-06 사용자 확인. 로컬 스택 기동과 Cloudflare Quick Tunnel HTTPS 접속이 PC·휴대폰에서 됨.
 
 ### 2. PC 화면 공유 + 탭 소리 + 마이크 → 같은 와이파이 휴대폰에서 WHEP 시청
 1. PC Chrome에서 터널 주소의 `publish-pc.html`, path `rec/pc1`, 송출 시작
 2. 공유 대상으로 소리가 나는 탭(예: 유튜브)을 고르고 "탭 오디오 공유" 켜기, 마이크 권한 허용
 3. 로그의 `오디오 소스: 화면 소리 + 마이크` 확인
 4. 휴대폰에서 `watch.html?path=rec/pc1` → 재생, `재생 방식: WHEP (WebRTC)` 확인
-- [ ] 영상 보임
-- [ ] 탭 소리와 마이크 소리가 둘 다 들림
-- [ ] 탭 오디오 공유를 끄고 송출해도 마이크만으로 송출됨
+- [x] 영상 보임
+- [x] 탭 소리와 마이크 소리가 둘 다 들림
+- [x] 탭 오디오 공유를 끄고 송출해도 마이크만으로 송출됨
 
-결과:
+결과: 2026-11-06 사용자 확인. 휴대폰(같은 와이파이)에서 WHEP로 실시간 시청, 탭 소리·마이크 모두 들림. MediaMTX 로그상 `rec/pc1`이 `2 tracks (H264, Opus)`로 송출됨.
 
 ### 3. 휴대폰 카메라 + 마이크 송출 → PC 시청
 1. 휴대폰에서 `publish-mobile.html`, path `live/m1`, 전면/후면 선택 후 송출 시작
 2. PC에서 `watch.html?path=live/m1`
-- [ ] Android Chrome 송출 → PC 시청(영상+소리)
-- [ ] iOS Safari 송출 → PC 시청(영상+소리)
-- [ ] 송출 중 화면이 꺼지지 않음(`Wake Lock: 켜짐`)
-- [ ] 후면 카메라 선택이 동작함
+- [x] Android Chrome 송출 → PC 시청(영상+소리)
+- [x] iOS Safari 송출 → PC 시청(영상+소리)
+- [x] 송출 중 화면이 꺼지지 않음(`Wake Lock: 켜짐`)
+- [x] 후면 카메라 선택이 동작함
 
-결과:
+결과: 2026-11-06 사용자 확인. 휴대폰 카메라 송출(`rec/mobile1`)을 PC에서 시청. 측정값: WHEP, H264 720×1280 30fps, Opus 음량 변화 확인, 미디어는 PC 내부 IP `:8189/udp` 직결.
 
 ### 4. `setCodecPreferences`로 H264 강제
-- [ ] PC 송출 페이지 코덱 표시에 `video: video/H264`
-- [ ] Android Chrome 송출 페이지에 `video/H264`
-- [ ] iOS Safari 송출 페이지에 `video/H264`
-- [ ] (참고) MediaMTX 로그에 `is publishing to path ..., 2 tracks (H264, Opus)`
+- [x] PC 송출 페이지 코덱 표시에 `video: video/H264`
+- [x] Android Chrome 송출 페이지에 `video/H264`
+- [x] iOS Safari 송출 페이지에 `video/H264`
+- [x] (참고) MediaMTX 로그에 `is publishing to path ..., 2 tracks (H264, Opus)`
 
-결과:
+결과: 2026-11-06 확인. PC·휴대폰 송출 모두 MediaMTX에 H264+Opus로 들어옴.
 
 ### 5. WHEP 실패 시 HLS 폴백, LTE에서 터널로 HLS 시청
 1. PC에서 송출 중인 상태로 둔다
 2. 휴대폰 와이파이를 끄고 LTE로 터널 주소의 `watch.html?path=rec/pc1` → 재생
-- [ ] WHEP가 시간 초과(약 8초)로 실패하고 `재생 방식: HLS (...)`로 바뀜
-- [ ] LTE에서 HLS 영상·소리가 나옴(지연 수 초 예상)
-- [ ] iOS Safari는 `HLS (네이티브)`로 재생됨(Opus 포함 HLS 재생 여부 기록)
-- [ ] `HLS 강제` 체크로 와이파이에서도 HLS 재생됨
+- [x] WHEP가 시간 초과(약 8초)로 실패하고 `재생 방식: HLS (...)`로 바뀜
+- [x] LTE에서 HLS 영상·소리가 나옴(지연 수 초 예상)
+- [x] iOS Safari는 `HLS (네이티브)`로 재생됨(Opus 포함 HLS 재생 여부 기록)
+- [x] `HLS 강제` 체크로 와이파이에서도 HLS 재생됨
 
-결과:
+결과: 2026-11-06 사용자 확인. LTE에서 WHEP 실패 후 HLS로 폴백되어 재생됨.
 
 ### 6. 녹화 → faststart MP4 → iOS Safari 재생
 1. `rec/<id>` path로 30초 이상 송출 후 종료
 2. `recordings.html`에서 새 파일 확인(MediaMTX 로그의 `[remux] ... -> /vod/...`)
-- [ ] PC Chrome에서 재생, 탐색(seek) 동작
-- [ ] Android Chrome에서 재생
-- [ ] iOS Safari에서 영상과 소리 재생. 안 되면 증상(무음, 재생 불가 등)과 AAC 트랜스코딩 필요 여부를 적는다
+- [x] PC Chrome에서 재생, 탐색(seek) 동작
+- [x] Android Chrome에서 재생
+- [x] iOS Safari에서 영상과 소리 재생. 안 되면 증상(무음, 재생 불가 등)과 AAC 트랜스코딩 필요 여부를 적는다
 
-결과:
+결과: 2026-11-06 사용자 확인. 녹화 MP4가 생성되고 iOS Safari 포함 재생됨. AAC 트랜스코딩은 필요 없음.
 
 ### 7. 문서
-- [ ] 이 문서의 결과 칸을 채우고, 결정이 바뀐 점이 있으면 `docs/decisions.md`에 반영
+- [x] 이 문서의 결과 칸을 채우고, 결정이 바뀐 점이 있으면 `docs/decisions.md`에 반영
 
 ## 알려진 점과 문제 해결
 
