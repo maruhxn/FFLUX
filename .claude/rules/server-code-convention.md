@@ -84,4 +84,5 @@ paths:
 | 엔티티의 상태는 도메인 메서드로만 바꾼다. 바뀌는 프로퍼티는 `var … protected set`으로 둔다(allOpen 때문에 `private set`은 쓸 수 없다) | 불변식을 우회하는 쓰기를 막음 |
 | 스트리머·작성자 확인도 엔티티 메서드가 한다. 도메인 메서드는 행위자 ID를 받아 "아니면 403 → 상태 위반이면 409" 순서로 판단한다. 예: `broadcast.edit(memberId, title, description)` | 권한과 상태 규칙이 같은 객체에 있어 판정 순서가 한 곳에서 정해지고, DB 없이 단위 테스트할 수 있음 |
 | application 서비스는 조회·행 잠금(없으면 404)·트랜잭션·값 객체 생성·결과 변환만 하고 판단은 엔티티에 맡긴다. 판정 순서는 입력 검증 400(값 객체를 조회보다 먼저 만든다) → 대상 없음 404 → 스트리머·작성자 아님 403 → 상태 위반 409다 | 서비스가 얇아지고 규칙이 도메인 밖으로 새지 않음. 같은 요청이 언제나 같은 상태 코드를 받음 |
+| `application.provided` 인터페이스는 `<대상><역할 명사>`로 짓는다. 예: `MemberFinder`, `MemberRegister`, `MemberAuthenticator`, `BroadcastFinder`, `BroadcastModifier`, `PublishTokenIssuer`, `BroadcastStatusChanger`. 주입받는 필드 이름도 같은 이름을 쓴다(`private val memberFinder: MemberFinder`) | 동사형(`FindMember`)은 도메인 메서드·Command와 섞여 읽힌다. 역할 명사면 호출하는 쪽에서 무엇을 맡은 협력자인지 바로 보인다 |
 | 엔티티·값 객체 규칙은 해당 모듈의 DB 없는 단위 테스트로 검증한다. 잠금·인가 필터·쿼리가 맞물리는 동작은 HTTP 통합 테스트가 맡는다 | 규칙 표를 빠르게 전수 검증하고, 통합 테스트는 경계 동작에 집중 |

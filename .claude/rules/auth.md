@@ -11,7 +11,7 @@ paths:
 - Spring Security 세션 방식(HttpOnly 쿠키), Spring Session JDBC로 MySQL에 저장한다. JWT는 쓰지 않는다.
 - CSRF는 `SameSite=Lax` 세션 쿠키로 막고 CSRF 토큰은 쓰지 않는다. 쓰기 API를 GET으로 만들지 않는다(Lax 쿠키는 다른 사이트의 GET 이동에는 실린다).
 - 401·403은 필터 단계(`AuthenticationEntryPoint`, `AccessDeniedHandler`)에서도 MVC 예외 처리와 같은 ProblemDetail 형식으로 응답한다.
-- Security 설정(필터 체인, 401/403 처리)은 `app`에만 둔다. 자격 증명 확인은 `member`의 provided 유스케이스 `AuthenticateMember`가 한다.
+- Security 설정(필터 체인, 401/403 처리)은 `app`에만 둔다. 자격 증명 확인은 `member`의 provided 유스케이스 `MemberAuthenticator`가 한다.
 - 세션 principal은 `common`의 `LoginMember(memberId, nickname)`다. 다른 모듈의 web 포트는 `member: LoginMember` 파라미터로 받고 Spring Security 타입을 직접 쓰지 않는다. `LoginMember`는 `java.security.Principal`을 구현하지 않는다(구현하면 MVC 기본 리졸버가 가로챈다).
 - `/api`는 기본 거절이다. 비로그인으로 열 핸들러 메서드에 `@PublicApi`를 붙인다. Security 설정에 공개 URL을 나열하지 않는다. `@PublicApi` 메서드는 `LoginMember`를 받지 않는다.
 - 회원 필드: `username`(유니크), `password`(BCrypt), `nickname`.

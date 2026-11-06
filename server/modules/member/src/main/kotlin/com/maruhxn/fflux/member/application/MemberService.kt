@@ -3,10 +3,10 @@ package com.maruhxn.fflux.member.application
 import com.maruhxn.fflux.common.error.BadRequestException
 import com.maruhxn.fflux.common.error.ConflictException
 import com.maruhxn.fflux.common.error.UnauthorizedException
-import com.maruhxn.fflux.member.application.provided.AuthenticateMember
-import com.maruhxn.fflux.member.application.provided.FindMember
+import com.maruhxn.fflux.member.application.provided.MemberAuthenticator
+import com.maruhxn.fflux.member.application.provided.MemberFinder
 import com.maruhxn.fflux.member.application.provided.MemberSummary
-import com.maruhxn.fflux.member.application.provided.RegisterMember
+import com.maruhxn.fflux.member.application.provided.MemberRegister
 import com.maruhxn.fflux.member.application.provided.RegisterMemberCommand
 import com.maruhxn.fflux.member.application.required.MemberRepository
 import com.maruhxn.fflux.member.domain.Member
@@ -25,7 +25,7 @@ class MemberService(
     private val memberRepository: MemberRepository,
     private val passwordEncoder: PasswordEncoder,
     private val clock: Clock,
-) : RegisterMember, AuthenticateMember, FindMember {
+) : MemberRegister, MemberAuthenticator, MemberFinder {
 
     override fun register(command: RegisterMemberCommand): Long {
         // 여러 칸이 틀리면 모든 칸의 에러를 한 번에 알린다.

@@ -3,8 +3,8 @@ package com.maruhxn.fflux.auth
 import com.maruhxn.fflux.common.auth.LoginMember
 import com.maruhxn.fflux.common.auth.PublicApi
 import com.maruhxn.fflux.common.error.NotFoundException
-import com.maruhxn.fflux.member.application.provided.AuthenticateMember
-import com.maruhxn.fflux.member.application.provided.FindMember
+import com.maruhxn.fflux.member.application.provided.MemberAuthenticator
+import com.maruhxn.fflux.member.application.provided.MemberFinder
 import com.maruhxn.fflux.member.application.provided.MemberSummary
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -22,8 +22,8 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/auth")
 class AuthController(
-    private val authenticateMember: AuthenticateMember,
-    private val findMember: FindMember,
+    private val memberAuthenticator: MemberAuthenticator,
+    private val memberFinder: MemberFinder,
     private val securityContextRepository: SecurityContextRepository,
     private val testAccountProperties: TestAccountProperties,
 ) {
@@ -35,7 +35,7 @@ class AuthController(
         httpRequest: HttpServletRequest,
         httpResponse: HttpServletResponse,
     ): MeResponse {
-        val member = authenticateMember.authenticate(request.username, request.password)
+        val member = memberAuthenticator.authenticate(request.username, request.password)
         return signIn(member, httpRequest, httpResponse)
     }
 
@@ -49,7 +49,7 @@ class AuthController(
     ): MeResponse {
         val member = TestAccount.ofUsername(request.account)
             ?.takeIf { testAccountProperties.enabled }
-            ?.let { findMember.findByUsername(it.username) }
+            ?.let { memberFinder.findByUsername(it.username) }
             ?: throw NotFoundException("테스트 계정을 찾을 수 없습니다.")
         return signIn(member, httpRequest, httpResponse)
     }

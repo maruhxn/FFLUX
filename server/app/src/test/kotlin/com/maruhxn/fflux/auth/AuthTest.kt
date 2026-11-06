@@ -3,8 +3,8 @@ package com.maruhxn.fflux.auth
 import com.maruhxn.fflux.common.auth.LoginMember
 import com.maruhxn.fflux.common.auth.PublicApi
 import com.maruhxn.fflux.support.IntegrationTest
-import com.maruhxn.fflux.member.application.provided.FindMember
-import com.maruhxn.fflux.member.application.provided.RegisterMember
+import com.maruhxn.fflux.member.application.provided.MemberFinder
+import com.maruhxn.fflux.member.application.provided.MemberRegister
 import com.maruhxn.fflux.support.TEST_STREAMER_PASSWORD
 import com.maruhxn.fflux.support.TEST_VIEWER_PASSWORD
 import org.junit.jupiter.api.Test
@@ -31,10 +31,10 @@ class AuthTest : IntegrationTest() {
     private lateinit var jdbcTemplate: JdbcTemplate
 
     @Autowired
-    private lateinit var findMember: FindMember
+    private lateinit var memberFinder: MemberFinder
 
     @Autowired
-    private lateinit var registerMember: RegisterMember
+    private lateinit var memberRegister: MemberRegister
 
     @Test
     fun `아이디 비밀번호 닉네임으로 가입한다`() {
@@ -150,8 +150,8 @@ class AuthTest : IntegrationTest() {
     fun `비밀번호 규칙에 맞지 않는 테스트 계정은 기동을 막지 않고 건너뛴다`() {
         val seeder = TestAccountSeeder(
             TestAccountProperties(streamerPassword = "short", viewerPassword = TEST_VIEWER_PASSWORD),
-            findMember,
-            registerMember,
+            memberFinder,
+            memberRegister,
         )
 
         seeder.run(DefaultApplicationArguments())

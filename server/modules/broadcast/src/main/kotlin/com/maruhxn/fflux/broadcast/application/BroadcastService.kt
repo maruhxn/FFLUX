@@ -3,8 +3,8 @@ package com.maruhxn.fflux.broadcast.application
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastPage
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastResult
 import com.maruhxn.fflux.broadcast.application.provided.EditBroadcastCommand
-import com.maruhxn.fflux.broadcast.application.provided.FindBroadcast
-import com.maruhxn.fflux.broadcast.application.provided.ManageBroadcast
+import com.maruhxn.fflux.broadcast.application.provided.BroadcastFinder
+import com.maruhxn.fflux.broadcast.application.provided.BroadcastModifier
 import com.maruhxn.fflux.broadcast.application.provided.RegisterBroadcastCommand
 import com.maruhxn.fflux.broadcast.application.required.BroadcastRepository
 import com.maruhxn.fflux.broadcast.application.required.PublishTokenRepository
@@ -25,7 +25,7 @@ class BroadcastService(
     private val broadcastRepository: BroadcastRepository,
     private val publishTokenRepository: PublishTokenRepository,
     private val clock: Clock,
-) : ManageBroadcast, FindBroadcast {
+) : BroadcastModifier, BroadcastFinder {
 
     override fun register(command: RegisterBroadcastCommand): Long {
         val (title, description) = titleAndDescription(command.title, command.description)

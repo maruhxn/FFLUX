@@ -3,10 +3,10 @@ package com.maruhxn.fflux.broadcast.port.web
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastPage
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastResult
 import com.maruhxn.fflux.broadcast.application.provided.EditBroadcastCommand
-import com.maruhxn.fflux.broadcast.application.provided.FindBroadcast
-import com.maruhxn.fflux.broadcast.application.provided.IssuePublishToken
+import com.maruhxn.fflux.broadcast.application.provided.BroadcastFinder
+import com.maruhxn.fflux.broadcast.application.provided.PublishTokenIssuer
 import com.maruhxn.fflux.broadcast.application.provided.IssuePublishTokenCommand
-import com.maruhxn.fflux.broadcast.application.provided.ManageBroadcast
+import com.maruhxn.fflux.broadcast.application.provided.BroadcastModifier
 import com.maruhxn.fflux.broadcast.application.provided.RegisterBroadcastCommand
 import com.maruhxn.fflux.broadcast.domain.BroadcastStatus
 import com.maruhxn.fflux.common.auth.LoginMember
@@ -26,14 +26,14 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/broadcasts")
 class BroadcastController(
-    private val manageBroadcast: ManageBroadcast,
-    private val findBroadcast: FindBroadcast,
-    private val issuePublishToken: IssuePublishToken,
+    private val broadcastModifier: BroadcastModifier,
+    private val broadcastFinder: BroadcastFinder,
+    private val publishTokenIssuer: PublishTokenIssuer,
 ) {
 
     @PostMapping
     fun register(member: LoginMember, @RequestBody request: BroadcastRequest): ResponseEntity<RegisterBroadcastResponse> {
-        val id = manageBroadcast.register(
+        val id = broadcastModifier.register(
             RegisterBroadcastCommand(member.memberId, member.nickname, request.title, request.description),
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(RegisterBroadcastResponse(id))
@@ -41,19 +41,19 @@ class BroadcastController(
 
     @PatchMapping("/{id}")
     fun edit(member: LoginMember, @PathVariable id: Long, @RequestBody request: BroadcastRequest): ResponseEntity<Unit> {
-        manageBroadcast.edit(EditBroadcastCommand(id, member.memberId, request.title, request.description))
+        broadcastModifier.edit(EditBroadcastCommand(id, member.memberId, request.title, request.description))
         return ResponseEntity.noContent().build()
     }
 
     @DeleteMapping("/{id}")
     fun delete(member: LoginMember, @PathVariable id: Long): ResponseEntity<Unit> {
-        manageBroadcast.delete(id, member.memberId)
+        broadcastModifier.delete(id, member.memberId)
         return ResponseEntity.noContent().build()
     }
 
     @PostMapping("/{id}/publish-token")
     fun publishToken(member: LoginMember, @PathVariable id: Long, @RequestBody request: PublishTokenRequest): PublishTokenResponse {
-        val result = issuePublishToken.issue(IssuePublishTokenCommand(id, member.memberId, request.record))
+        val result = publishTokenIssuer.issue(IssuePublishTokenCommand(id, member.memberId, request.record))
         // 미디어 서버는 같은 도메인의 /media 아래에 있다(Caddy가 넘긴다).
         return PublishTokenResponse(token = result.token, whipUrl = "/media/${result.mediaPath}/whip")
     }
@@ -61,15 +61,15 @@ class BroadcastController(
     @PublicApi
     @GetMapping
     fun list(@RequestParam status: BroadcastStatus, @RequestParam(required = false) cursor: Long?): BroadcastPage =
-        findBroadcast.findPublic(status, cursor)
+        broadcastFinder.findPublic(status, cursor)
 
     @GetMapping("/mine")
     fun mine(member: LoginMember, @RequestParam(required = false) cursor: Long?): BroadcastPage =
-        findBroadcast.findMine(member.memberId, cursor)
+        broadcastFinder.findMine(member.memberId, cursor)
 
     @PublicApi
     @GetMapping("/{id}")
-    fun detail(@PathVariable id: Long): BroadcastResult = findBroadcast.find(id)
+    fun detail(@PathVariable id: Long): BroadcastResult = broadcastFinder.find(id)
 }
 
 /** 제목·설명의 규칙(공백 제거, 길이)은 도메인 값 객체가 검사한다. */

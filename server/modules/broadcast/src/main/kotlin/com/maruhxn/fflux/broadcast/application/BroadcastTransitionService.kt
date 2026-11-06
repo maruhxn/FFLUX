@@ -1,6 +1,6 @@
 package com.maruhxn.fflux.broadcast.application
 
-import com.maruhxn.fflux.broadcast.application.provided.BroadcastTransition
+import com.maruhxn.fflux.broadcast.application.provided.BroadcastStatusChanger
 import com.maruhxn.fflux.broadcast.application.required.BroadcastRepository
 import com.maruhxn.fflux.broadcast.application.required.PublishTokenRepository
 import com.maruhxn.fflux.broadcast.domain.BroadcastStatus
@@ -18,7 +18,7 @@ class BroadcastTransitionService(
     private val broadcastRepository: BroadcastRepository,
     private val publishTokenRepository: PublishTokenRepository,
     private val clock: Clock,
-) : BroadcastTransition {
+) : BroadcastStatusChanger {
 
     private val log = LoggerFactory.getLogger(javaClass)
 

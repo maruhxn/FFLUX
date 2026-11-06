@@ -1,6 +1,6 @@
 package com.maruhxn.fflux.broadcast.application
 
-import com.maruhxn.fflux.broadcast.application.provided.IssuePublishToken
+import com.maruhxn.fflux.broadcast.application.provided.PublishTokenIssuer
 import com.maruhxn.fflux.broadcast.application.provided.IssuePublishTokenCommand
 import com.maruhxn.fflux.broadcast.application.provided.PublishTokenResult
 import com.maruhxn.fflux.broadcast.application.required.BroadcastRepository
@@ -20,7 +20,7 @@ class PublishTokenService(
     private val broadcastRepository: BroadcastRepository,
     private val publishTokenRepository: PublishTokenRepository,
     private val clock: Clock,
-) : IssuePublishToken {
+) : PublishTokenIssuer {
 
     override fun issue(command: IssuePublishTokenCommand): PublishTokenResult {
         val now = LocalDateTime.now(clock)

@@ -1,7 +1,7 @@
 package com.maruhxn.fflux.broadcast.application.provided
 
 /** 스트리머의 방송 등록·수정·삭제. */
-interface ManageBroadcast {
+interface BroadcastModifier {
     /** READY 방송을 만들고 방송 ID를 돌려준다. */
     fun register(command: RegisterBroadcastCommand): Long
 

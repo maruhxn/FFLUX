@@ -1,6 +1,6 @@
 package com.maruhxn.fflux.member.application.provided
 
-interface FindMember {
+interface MemberFinder {
     fun findByUsername(username: String): MemberSummary?
 }
 

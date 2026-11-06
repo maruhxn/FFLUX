@@ -207,7 +207,7 @@ com.maruhxn.fflux.<module>
 ### 인증 배치
 
 - Spring Security 설정(필터 체인, 세션, 401/403 처리)은 `app`.
-- 자격 증명 확인은 `member`의 provided 유스케이스(`AuthenticateMember`).
+- 자격 증명 확인은 `member`의 provided 유스케이스(`MemberAuthenticator`).
 - 세션 principal은 `common`의 값 타입 `LoginMember(memberId, nickname)`이다.
 - 다른 모듈의 web 포트는 컨트롤러 파라미터 `member: LoginMember`로 현재 사용자를 받는다. 이 파라미터가 있으면 로그인이 필요하다는 뜻이고, Spring Security 타입은 알지 못한다.
 - `/api`는 기본 거절이다. 비로그인으로 열 핸들러 메서드에만 `common`의 `@PublicApi`를 붙이고, `app`의 인가 규칙이 요청을 처리할 핸들러의 이 어노테이션을 보고 허용한다. 공개 경로를 Security 설정에 URL로 나열하지 않으므로 새 API가 `app`을 고치지 않는다. URL 목록 방식은 모듈마다 `app`을 고쳐야 해서, 시그니처만으로 401을 정하고 URL은 모두 여는 방식은 실수가 열린 쪽으로 나서 택하지 않았다.

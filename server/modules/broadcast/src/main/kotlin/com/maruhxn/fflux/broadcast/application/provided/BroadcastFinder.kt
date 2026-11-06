@@ -4,7 +4,7 @@ import com.maruhxn.fflux.broadcast.domain.BroadcastStatus
 import java.time.LocalDateTime
 
 /** 삭제되지 않은 방송의 목록·상세 조회. 목록은 최신순이고 [cursor]는 앞 페이지의 `nextCursor`다. */
-interface FindBroadcast {
+interface BroadcastFinder {
     /** 없거나 삭제됐으면 404. */
     fun find(broadcastId: Long): BroadcastResult
 
