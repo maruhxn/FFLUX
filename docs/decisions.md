@@ -105,6 +105,16 @@
 - 방송별 SSE 하나(`GET /api/broadcasts/{id}/events`)로 상태 변화, 방송 정보 수정, 채팅, 후원 알림을 보낸다. 쓰기는 REST.
 - Spring MVC `SseEmitter`, 서버 1대이므로 인메모리 허브.
 
+### 시청자 수
+
+- 방송별 SSE 구독 중 로그인한 회원만 회원 ID 단위로 센다. 같은 회원이 같은 방송을 여러 탭으로 봐도 1명이고, 그 회원의 마지막 연결이 끊기면 빠진다. 비로그인 구독과 그 방송의 스트리머는 세지 않는다. 비로그인 시청자를 같은 브라우저 단위로 묶으려면 익명 쿠키나 세션이 필요해서, 그 비용 대신 로그인 회원만 세기로 했다. 비로그인 시청자가 0명으로 보이는 점은 README에 적는다.
+- MediaMTX reader 수는 쓰지 않는다. HLS 폴백 시청자가 muxer 하나로 묶여 1로 잡히기 때문이다.
+- 방송 상태와 관계없이 세고 보낸다. 화면은 LIVE일 때만 보여 준다. 허브가 방송 상태를 따로 추적하지 않기 위해서이고, READY 상세에서 기다리던 회원이 시작 순간 바로 잡힌다.
+- 상세·송출 화면: SSE `viewer-count`(`{count}`) 이벤트. 5초 주기로 값이 바뀐 방송에만 보내고, 새 구독자는 연결 직후 현재 값을 한 번 받는다. 끊긴 연결은 쓰기에 실패해야 빠지므로(heartbeat 20초) 줄어든 값은 그만큼 늦게 반영된다.
+- 목록·상세 응답: LIVE 방송의 `viewerCount`에 조회 시점 값을 담는다(LIVE가 아니면 null). 목록은 실시간 갱신이 없다.
+- 구독 API는 비로그인을 허용하는 공개 API이므로, 공개 API도 로그인 회원을 `LoginMember?`(nullable)로는 받을 수 있게 했다.
+- 저장하지 않는다(메모리 값). 최고·누적 기록도 없다. 서버 재시작 후에는 SSE 재연결로 회복된다.
+
 ## 5. 녹화와 다시보기
 
 - 녹화 여부는 방송 시작 시 선택(`broadcast.recordingEnabled`). `rec/` path에만 MediaMTX `record: yes`.
@@ -216,9 +226,9 @@ com.maruhxn.fflux.<module>
 - Spring Security 설정(필터 체인, 세션, 401/403 처리)은 `app`.
 - 자격 증명 확인은 `member`의 provided 유스케이스(`MemberAuthenticator`).
 - 세션 principal은 `common`의 값 타입 `LoginMember(memberId, nickname)`이다.
-- 다른 모듈의 web 포트는 컨트롤러 파라미터 `member: LoginMember`로 현재 사용자를 받는다. 이 파라미터가 있으면 로그인이 필요하다는 뜻이고, Spring Security 타입은 알지 못한다.
+- 다른 모듈의 web 포트는 컨트롤러 파라미터 `member: LoginMember`로 현재 사용자를 받는다. 이 파라미터가 있으면 로그인이 필요하다는 뜻이고(`LoginMember?`면 비로그인은 null), Spring Security 타입은 알지 못한다.
 - `/api`는 기본 거절이다. 비로그인으로 열 핸들러 메서드에만 `common`의 `@PublicApi`를 붙이고, `app`의 인가 규칙이 요청을 처리할 핸들러의 이 어노테이션을 보고 허용한다. 공개 경로를 Security 설정에 URL로 나열하지 않으므로 새 API가 `app`을 고치지 않는다. URL 목록 방식은 모듈마다 `app`을 고쳐야 해서, 시그니처만으로 401을 정하고 URL은 모두 여는 방식은 실수가 열린 쪽으로 나서 택하지 않았다.
-- `@PublicApi` 메서드는 `LoginMember`를 받지 않는다(앱 시작 시 검사). "로그인 여부와 상관없는" API는 필요해질 때 추가한다.
+- `@PublicApi` 메서드는 `LoginMember`를 nullable(`LoginMember?`)로만 받는다(앱 시작 시 검사). 로그인 여부와 상관없이 열되 로그인했으면 회원을 알아야 하는 API(방송별 SSE의 시청자 수)에 쓴다.
 - 스트리머·작성자 권한 확인은 각 모듈의 엔티티 메서드가 행위자 ID를 받아 한다(403 → 409 순서). application 서비스는 엔티티를 찾아 위임한다.
 
 ## 10. 프론트엔드
