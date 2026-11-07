@@ -105,7 +105,8 @@ class BroadcastEventHub(
 
     companion object {
         val TIMEOUT: Duration = Duration.ofMinutes(30)
-        const val HEARTBEAT_SECONDS = 20L
+        /** 끊긴 연결은 보통 두 번째 쓰기에서 실패하므로, 시청자가 나간 것은 이 주기의 약 두 배 뒤에 반영된다. */
+        const val HEARTBEAT_SECONDS = 5L
         const val VIEWER_COUNT_SECONDS = 5L
     }
 }
