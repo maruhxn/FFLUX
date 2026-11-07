@@ -12,6 +12,8 @@ export type Broadcast = {
   description: string | null
   status: BroadcastStatus
   createdAt: string
+  /** LIVE 방송의 지금 시청자 수(로그인한 시청자만 센다). LIVE가 아니면 null. */
+  viewerCount: number | null
 }
 
 type BroadcastPage = { items: Broadcast[]; nextCursor: number | null }
@@ -20,6 +22,10 @@ export type BroadcastForm = { title: string; description: string }
 
 export function formatDateTime(value: string) {
   return new Date(value).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+export function formatViewerCount(count: number) {
+  return `${count.toLocaleString('ko-KR')}명`
 }
 
 const BROADCASTS_KEY = ['broadcasts'] as const

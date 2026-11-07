@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router'
 import { useMe } from '../auth/auth'
-import { useBroadcast, useIssuePublishToken, type Broadcast } from '../broadcast/broadcast'
+import { formatViewerCount, useBroadcast, useIssuePublishToken, type Broadcast } from '../broadcast/broadcast'
 import { useBroadcastEvents } from '../broadcast/events'
 import { captureCamera, captureScreen, flipCamera, publishesCamera, releaseCapture, type Capture, type Facing } from '../broadcast/capture'
 import {
@@ -231,7 +231,9 @@ function PublishingView({ broadcast, session }: { broadcast: Broadcast; session:
       <Title broadcast={current} status={current.status} />
       <Preview stream={session.stream} />
       <p className="text-sm text-neutral-300">
-        {current.status === 'LIVE' ? '방송 중입니다.' : '송출을 연결했습니다. 미디어 서버가 영상을 받으면 방송이 시작됩니다.'} 다른
+        {current.status === 'LIVE'
+          ? `방송 중입니다. ${formatViewerCount(current.viewerCount ?? 0)} 시청 중.`
+          : '송출을 연결했습니다. 미디어 서버가 영상을 받으면 방송이 시작됩니다.'} 다른
         페이지로 옮겨도 송출은 이어집니다. 소리: {session.audioLabel}
       </p>
       <div className="flex flex-wrap gap-2">

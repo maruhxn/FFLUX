@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useMe } from '../auth/auth'
-import { broadcastDetailKey, formatDateTime, useBroadcast, useDeleteBroadcast, type BroadcastStatus } from '../broadcast/broadcast'
+import { broadcastDetailKey, formatDateTime, formatViewerCount, useBroadcast, useDeleteBroadcast, type BroadcastStatus } from '../broadcast/broadcast'
 import { useBroadcastEvents } from '../broadcast/events'
 import { EndBroadcastButton } from '../components/EndBroadcastButton'
 import { LivePlayer } from '../components/LivePlayer'
@@ -52,6 +52,9 @@ export function BroadcastDetailPage() {
         <div className="flex items-center gap-2">
           <StatusBadge status={broadcast.status} />
           <span className="text-sm text-neutral-400">{broadcast.streamerNickname}</span>
+          {broadcast.status === 'LIVE' && broadcast.viewerCount !== null && (
+            <span className="text-sm text-neutral-300">{formatViewerCount(broadcast.viewerCount)} 시청 중</span>
+          )}
           <span className="text-xs text-neutral-500">{formatDateTime(broadcast.createdAt)}</span>
         </div>
         <h1 className="text-2xl font-bold break-words">{broadcast.title}</h1>

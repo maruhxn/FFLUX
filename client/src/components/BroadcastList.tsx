@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { formatDateTime, useBroadcastList, type BroadcastListKind } from '../broadcast/broadcast'
+import { formatDateTime, formatViewerCount, useBroadcastList, type BroadcastListKind } from '../broadcast/broadcast'
 import { StatusBadge } from './StatusBadge'
 
 /** 최신순 방송 목록. 다음 페이지는 "더 보기"로 읽는다. */
@@ -23,6 +23,9 @@ export function BroadcastList({ kind, empty }: { kind: BroadcastListKind; empty:
             >
               <div className="flex items-center gap-2">
                 <StatusBadge status={b.status} />
+                {b.status === 'LIVE' && b.viewerCount !== null && (
+                  <span className="text-xs font-semibold text-neutral-300">{formatViewerCount(b.viewerCount)}</span>
+                )}
                 <span className="truncate text-sm text-neutral-400">{b.streamerNickname}</span>
               </div>
               <p className="truncate font-semibold">{b.title}</p>
