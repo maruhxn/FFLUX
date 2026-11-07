@@ -48,6 +48,9 @@ class SseSubscription private constructor(
     fun next(timeout: Duration = Duration.ofSeconds(5)): SseEvent =
         checkNotNull(events.poll(timeout.toMillis(), TimeUnit.MILLISECONDS)) { "SSE 이벤트가 ${timeout}안에 오지 않았습니다." }
 
+    /** 다음 이벤트를 [timeout] 동안 기다린다. 오지 않으면 null. */
+    fun nextOrNull(timeout: Duration): SseEvent? = events.poll(timeout.toMillis(), TimeUnit.MILLISECONDS)
+
     /** [within] 동안 이벤트가 오지 않았는지. */
     fun nothingWithin(within: Duration = Duration.ofMillis(500)): Boolean =
         events.poll(within.toMillis(), TimeUnit.MILLISECONDS) == null

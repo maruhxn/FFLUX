@@ -9,6 +9,7 @@ import com.maruhxn.fflux.broadcast.application.provided.BroadcastModifier
 import com.maruhxn.fflux.broadcast.application.provided.RegisterBroadcastCommand
 import com.maruhxn.fflux.broadcast.application.required.BroadcastRepository
 import com.maruhxn.fflux.broadcast.application.required.PublishTokenRepository
+import com.maruhxn.fflux.broadcast.application.required.ViewerCounter
 import com.maruhxn.fflux.broadcast.domain.Broadcast
 import com.maruhxn.fflux.broadcast.domain.BroadcastDescription
 import com.maruhxn.fflux.broadcast.domain.BroadcastStatus
@@ -28,6 +29,7 @@ class BroadcastService(
     private val broadcastRepository: BroadcastRepository,
     private val publishTokenRepository: PublishTokenRepository,
     private val eventPublisher: EventPublisherPort,
+    private val viewerCounter: ViewerCounter,
     private val clock: Clock,
 ) : BroadcastModifier, BroadcastFinder {
 
@@ -60,11 +62,16 @@ class BroadcastService(
     @Transactional(readOnly = true)
     override fun find(broadcastId: Long): BroadcastDetailResult {
         val broadcast = broadcastRepository.findByIdAndDeletedAtIsNull(broadcastId) ?: throw notFound()
-        return BroadcastDetailResult(broadcast.toResult(), watchPath = broadcast.mediaPath.takeIf { broadcast.isWatchable() })
+        val viewerCount = viewerCountsOf(listOf(broadcast))[broadcast.id]
+        return BroadcastDetailResult(
+            broadcast.toResult(viewerCount),
+            watchPath = broadcast.mediaPath.takeIf { broadcast.isWatchable() },
+        )
     }
 
     @Transactional(readOnly = true)
-    override fun exists(broadcastId: Long): Boolean = broadcastRepository.existsByIdAndDeletedAtIsNull(broadcastId)
+    override fun findStreamerId(broadcastId: Long): Long =
+        (broadcastRepository.findByIdAndDeletedAtIsNull(broadcastId) ?: throw notFound()).streamerId
 
     @Transactional(readOnly = true)
     override fun findPublic(status: BroadcastStatus, cursor: Long?): BroadcastPage {
@@ -84,8 +91,9 @@ class BroadcastService(
     private fun page(status: BroadcastStatus?, streamerId: Long?, cursor: Long?): BroadcastPage {
         val rows = broadcastRepository.findPage(status, streamerId, cursor, PAGE_SIZE + 1)
         val items = rows.take(PAGE_SIZE)
+        val viewerCounts = viewerCountsOf(items)
         return BroadcastPage(
-            items = items.map { it.toResult() },
+            items = items.map { it.toResult(viewerCounts[it.id]) },
             nextCursor = if (rows.size > PAGE_SIZE) items.last().id else null,
         )
     }
@@ -100,7 +108,12 @@ class BroadcastService(
 
     private fun notFound() = NotFoundException("방송을 찾을 수 없습니다.")
 
-    private fun Broadcast.toResult() = BroadcastResult(
+    /** 시청자 수는 LIVE 방송에만 있다. */
+    private fun viewerCountsOf(broadcasts: List<Broadcast>): Map<Long, Int> =
+        broadcasts.filter { it.isWatchable() }.map { it.id }
+            .takeIf { it.isNotEmpty() }?.let(viewerCounter::viewerCounts).orEmpty()
+
+    private fun Broadcast.toResult(viewerCount: Int?) = BroadcastResult(
         id = id,
         streamerId = streamerId,
         streamerNickname = streamerNickname,
@@ -108,6 +121,7 @@ class BroadcastService(
         description = description?.value,
         status = status,
         createdAt = createdAt,
+        viewerCount = viewerCount,
     )
 
     companion object {

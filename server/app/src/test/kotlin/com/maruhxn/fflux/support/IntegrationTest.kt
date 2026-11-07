@@ -1,5 +1,6 @@
 package com.maruhxn.fflux.support
 
+import com.maruhxn.fflux.realtime.application.BroadcastEventHub
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -35,6 +36,9 @@ abstract class IntegrationTest {
     @Autowired
     protected lateinit var kicker: FakeMediaPublisherKicker
 
+    @Autowired
+    protected lateinit var hub: BroadcastEventHub
+
     protected lateinit var http: RestClient
 
     @BeforeEach
@@ -42,6 +46,8 @@ abstract class IntegrationTest {
         databaseCleaner.clean()
         clock.reset()
         kicker.reset()
+        // 방송 ID가 테이블을 비울 때마다 다시 시작하므로, 앞 테스트에서 끊긴 구독이 같은 ID에 남아 시청자 수에 섞이지 않게 비운다.
+        hub.completeAll()
         http = RestClient.builder()
             .baseUrl("http://localhost:$port")
             .defaultStatusHandler({ true }) { _, _ -> }

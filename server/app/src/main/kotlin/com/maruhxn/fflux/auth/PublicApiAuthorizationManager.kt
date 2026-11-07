@@ -42,14 +42,14 @@ class PublicApiAuthorizationManager(
     }
 
     companion object {
-        /** 공개 API가 로그인 회원을 받으면 비로그인 호출에서 반드시 실패하므로, 앱 시작 단계에서 막는다. */
+        /** 공개 API가 로그인 회원을 non-null로 받으면 비로그인 호출에서 반드시 실패하므로, 앱 시작 단계에서 막는다. */
         fun verifyPublicApis(handlerMethods: Collection<HandlerMethod>) {
             val conflicts = handlerMethods.filter { method ->
                 method.hasMethodAnnotation(PublicApi::class.java) &&
-                    method.methodParameters.any { it.parameterType == LoginMember::class.java }
+                    method.methodParameters.any { it.parameterType == LoginMember::class.java && !it.isOptional }
             }
             check(conflicts.isEmpty()) {
-                "@PublicApi 메서드는 LoginMember를 받을 수 없습니다: ${conflicts.joinToString { it.shortLogMessage }}"
+                "@PublicApi 메서드는 LoginMember를 nullable로만 받을 수 있습니다: ${conflicts.joinToString { it.shortLogMessage }}"
             }
         }
     }

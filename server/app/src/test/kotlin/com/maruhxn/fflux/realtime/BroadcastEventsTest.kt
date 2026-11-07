@@ -14,7 +14,9 @@ import kotlin.test.assertTrue
 /** 방송별 SSE(`/api/broadcasts/{id}/events`): 상태 변화와 정보 수정이 구독자에게 오는지. */
 class BroadcastEventsTest : BroadcastFlowTest() {
 
-    private fun subscribe(id: Long, cookie: String? = null): SseSubscription = openSse("/api/broadcasts/$id/events", cookie)
+    /** 구독 직후 오는 시청자 수 이벤트는 넘기고, 그 뒤의 이벤트를 본다. */
+    private fun subscribe(id: Long, cookie: String? = null): SseSubscription =
+        openSse("/api/broadcasts/$id/events", cookie).also { if (it.status == 200) assertEquals("viewer-count", it.next().name) }
 
     private fun edit(id: Long, title: String, description: String?) {
         val response = http.patch().uri("/api/broadcasts/{id}", id).withCookie(streamer)

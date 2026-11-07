@@ -203,6 +203,20 @@ class AuthTest : IntegrationTest() {
         assertEquals("public", response.body)
     }
 
+    @Test
+    fun `PublicApi의 nullable LoginMember는 로그인하면 회원, 비로그인이면 null이다`() {
+        signUp("newbie01", "password123", "새내기")
+        val cookie = sessionCookieOf(login("newbie01", "password123").headers)
+        val memberId = (me(cookie).body?.get("memberId") as Number).toLong()
+
+        val loggedIn = http.get().uri("/api/test/optional-login-member").header(HttpHeaders.COOKIE, cookie)
+            .retrieve().toEntity(String::class.java)
+        val anonymous = http.get().uri("/api/test/optional-login-member").retrieve().toEntity(String::class.java)
+
+        assertEquals("$memberId", loggedIn.body)
+        assertEquals("anonymous", anonymous.body)
+    }
+
     private fun seedTestAccounts() = testAccountSeeder.run(DefaultApplicationArguments())
 
     private fun signUp(username: String, password: String, nickname: String) =
@@ -243,4 +257,8 @@ class AuthTestController {
     @PublicApi
     @GetMapping("/api/test/public")
     fun public(): String = "public"
+
+    @PublicApi
+    @GetMapping("/api/test/optional-login-member")
+    fun optionalLoginMember(member: LoginMember?): String = member?.memberId?.toString() ?: "anonymous"
 }

@@ -106,6 +106,8 @@ data class BroadcastDetailResponse(
     val createdAt: LocalDateTime,
     val whepUrl: String?,
     val hlsUrl: String?,
+    /** LIVE 방송의 지금 시청자 수. LIVE가 아니면 null. */
+    val viewerCount: Int?,
 ) {
     companion object {
         fun of(result: BroadcastDetailResult) = with(result.broadcast) {
@@ -119,6 +121,7 @@ data class BroadcastDetailResponse(
                 createdAt = createdAt,
                 whepUrl = result.watchPath?.let(MediaUrls::whep),
                 hlsUrl = result.watchPath?.let(MediaUrls::hls),
+                viewerCount = viewerCount,
             )
         }
     }

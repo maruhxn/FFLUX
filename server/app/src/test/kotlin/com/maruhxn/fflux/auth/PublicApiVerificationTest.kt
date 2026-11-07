@@ -25,6 +25,13 @@ class PublicApiVerificationTest {
         }
     }
 
+    @Test
+    fun `PublicApi 메서드는 nullable LoginMember를 받을 수 있다`() {
+        assertDoesNotThrow {
+            PublicApiAuthorizationManager.verifyPublicApis(listOf(handlerOf("publicWithOptionalLoginMember")))
+        }
+    }
+
     private fun handlerOf(name: String) =
         HandlerMethod(Handlers(), Handlers::class.java.declaredMethods.first { it.name == name })
 
@@ -32,6 +39,9 @@ class PublicApiVerificationTest {
     private class Handlers {
         @PublicApi
         fun publicWithLoginMember(member: LoginMember) = Unit
+
+        @PublicApi
+        fun publicWithOptionalLoginMember(member: LoginMember?) = Unit
 
         @PublicApi
         fun publicOnly() = Unit

@@ -9,9 +9,6 @@ interface BroadcastRepository {
     /** 삭제되지 않은 방송. */
     fun findByIdAndDeletedAtIsNull(id: Long): Broadcast?
 
-    /** 삭제되지 않은 방송이 있는지. */
-    fun existsByIdAndDeletedAtIsNull(id: Long): Boolean
-
     /** 삭제되지 않은 방송을 행 잠금(`SELECT … FOR UPDATE`)으로 읽는다. */
     fun findForUpdate(id: Long): Broadcast?
 

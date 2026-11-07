@@ -8,8 +8,8 @@ interface BroadcastFinder {
     /** 없거나 삭제됐으면 404. */
     fun find(broadcastId: Long): BroadcastDetailResult
 
-    /** 삭제되지 않은 방송이 있는지. */
-    fun exists(broadcastId: Long): Boolean
+    /** 방송의 스트리머 회원 ID. 없거나 삭제됐으면 404. */
+    fun findStreamerId(broadcastId: Long): Long
 
     /** 메인(LIVE)·지난 방송(ENDED) 목록. READY는 공개 목록이 아니라 400. */
     fun findPublic(status: BroadcastStatus, cursor: Long?): BroadcastPage
@@ -26,6 +26,8 @@ data class BroadcastResult(
     val description: String?,
     val status: BroadcastStatus,
     val createdAt: LocalDateTime,
+    /** LIVE 방송의 지금 시청자 수. LIVE가 아니면 null. */
+    val viewerCount: Int?,
 )
 
 /** 상세. [watchPath]는 시청할 수 있는(LIVE) 방송의 미디어 서버 경로이고, 그 밖에는 null이다. */
