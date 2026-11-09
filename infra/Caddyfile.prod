@@ -1,6 +1,8 @@
 # FFLUX 운영 Caddy (저장소 루트 compose.yml). API·미디어 서버(api.fflux.kro.kr)의 자동 HTTPS와 라우팅을 맡는다.
 # 프론트는 Vercel(fflux.kro.kr)이 서빙한다. /internal/* 은 어디로도 넘기지 않는다. Spring은 /api/* 만 받는다.
 {
+	# ACME 계정 이메일. 있어야 Let's Encrypt 발급 한도(kro.kr 공유)에 걸릴 때 ZeroSSL로 넘어간다.
+	email {$ACME_EMAIL}
 	# VM 방화벽은 443/udp를 열지 않는다. HTTP/3를 광고하지 않는다.
 	servers {
 		protocols h1 h2

@@ -80,6 +80,7 @@ vi .env   # 아래 값을 채운다
 | 키 | 값 |
 |---|---|
 | `DOMAIN` | `api.fflux.kro.kr` |
+| `ACME_EMAIL` | 인증서 발급 계정 이메일. `kro.kr`의 Let's Encrypt 발급 한도(주 50장, 다른 사용자와 공유)에 걸리면 ZeroSSL로 받는 데 필요 |
 | `CORS_ALLOWED_ORIGINS` | `https://fflux.kro.kr`(프론트 출처) |
 | `WEBRTC_ADDITIONAL_HOSTS` | 고정 외부 IP |
 | `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD` | 새로 만든 긴 무작위 값(`openssl rand -base64 24`) |

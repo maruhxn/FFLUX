@@ -12,7 +12,7 @@
   - 처음엔 `fflux.kro.kr` 하나에 프론트·`/api`·`/media`를 모두 두는 same-origin이었으나, 프론트를 Vercel에 올리기로 해 나눴다. VM은 API·미디어만 맡아 빌드·메모리 부담도 준다.
   - VM 경로: `/api` → Spring, `/media` → MediaMTX WHIP/WHEP/HLS, `/vod` → 녹화 MP4. 그 밖은 404.
   - 프론트는 `VITE_API_ORIGIN`(`client/.env.production`)으로 API 주소를 받고, `fetch`는 `credentials: 'include'`, SSE는 `withCredentials`로 세션 쿠키를 싣는다. Spring은 CORS로 `CORS_ALLOWED_ORIGINS`(프론트 출처)만 쿠키 포함 요청을 허용한다. 미디어 요청은 쿠키 없이 송출 토큰만 쓰고, CORS는 MediaMTX 기본값(`*`)에 맡긴다.
-  - `kro.kr`은 Public Suffix List에 없어 `fflux.kro.kr`과 `api.fflux.kro.kr`이 같은 사이트(site)다. 그래서 `SameSite=Lax` 세션 쿠키가 그대로 실린다. 같은 이유로 Let's Encrypt 발급 한도를 다른 `kro.kr` 사용자와 공유한다. 발급이 막히면 Caddy의 ZeroSSL 폴백에 기댄다.
+  - `kro.kr`은 Public Suffix List에 없어 `fflux.kro.kr`과 `api.fflux.kro.kr`이 같은 사이트(site)다. 그래서 `SameSite=Lax` 세션 쿠키가 그대로 실린다. 같은 이유로 Let's Encrypt 발급 한도를 다른 `kro.kr` 사용자와 공유한다. 발급이 막히면 Caddy의 ZeroSSL 폴백에 기댄다(첫 배포 때 실제로 한도에 걸렸다. 폴백에는 ACME 계정 이메일 `ACME_EMAIL`이 필요하다).
 - `/internal/*`은 Caddy에서 라우팅하지 않고, Spring 8080 포트는 호스트에 publish하지 않는다(네트워크 격리로 내부 API 보호).
 - WebRTC 미디어 포트 UDP/TCP 8189를 VM에서 직접 개방. TURN 없이 시작하고, VM 배포 후 LTE 확인에서 실패하면 coturn 추가.
 - 비밀값은 VM `.env`에만 두고 저장소에는 `.env.example`만 커밋.
