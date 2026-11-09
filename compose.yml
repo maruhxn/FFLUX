@@ -1,0 +1,82 @@
+# FFLUX 운영 스택(GCP VM): Spring, MySQL, MediaMTX, Caddy.
+# 배포: 저장소 루트에서 `git pull && docker compose up -d --build` (docs/deploy.md 참고)
+# 비밀값은 루트 .env에서 읽는다(.env.example 참고). 로컬 개발 스택은 infra/compose.yml이다.
+name: fflux
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    command: --default-time-zone=+09:00
+    environment:
+      MYSQL_DATABASE: fflux
+      MYSQL_USER: fflux
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?.env에 MYSQL_PASSWORD를 설정하세요}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?.env에 MYSQL_ROOT_PASSWORD를 설정하세요}
+      TZ: Asia/Seoul
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      # 최초 초기화 중 임시 서버(소켓 전용)에 속지 않도록 TCP로 확인한다.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+      interval: 5s
+      retries: 30
+
+  app:
+    build: ./server
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/fflux
+      SPRING_DATASOURCE_USERNAME: fflux
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SESSION_COOKIE_SECURE: "true"
+      TEST_ACCOUNTS_ENABLED: ${TEST_ACCOUNTS_ENABLED:-true}
+      TEST_STREAMER_PASSWORD: ${TEST_STREAMER_PASSWORD:-}
+      TEST_VIEWER_PASSWORD: ${TEST_VIEWER_PASSWORD:-}
+      MEDIAMTX_API_URL: http://mediamtx:9997
+    # 8080은 호스트에 열지 않는다. Caddy(/api)와 MediaMTX(/internal)만 내부망으로 부른다.
+
+  mediamtx:
+    image: bluenviron/mediamtx:latest-ffmpeg
+    restart: unless-stopped
+    environment:
+      # 브라우저에 알려줄 WebRTC 호스트: VM 고정 외부 IP.
+      MTX_WEBRTCADDITIONALHOSTS: ${WEBRTC_ADDITIONAL_HOSTS:?.env에 WEBRTC_ADDITIONAL_HOSTS(VM 고정 외부 IP)를 설정하세요}
+      FFLUX_SERVER_URL: http://app:8080
+      MTX_AUTHHTTPADDRESS: http://app:8080/internal/mediamtx/auth
+    volumes:
+      - ./infra/mediamtx.yml:/mediamtx.yml:ro
+      - ./infra/hooks:/hooks:ro
+      - recordings:/recordings
+      - vod:/vod
+    ports:
+      # WebRTC 미디어만 연다. WHIP/WHEP/HLS(8889/8888)는 Caddy, Control API(9997)는 Spring만 내부망으로 쓴다.
+      - "8189:8189/udp"
+      - "8189:8189/tcp"
+
+  caddy:
+    build: ./client
+    restart: unless-stopped
+    depends_on:
+      - app
+      - mediamtx
+    environment:
+      DOMAIN: ${DOMAIN:?.env에 DOMAIN을 설정하세요}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - vod:/srv/vod:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  mysql_data:
+  recordings:
+  vod:
+  caddy_data:
+  caddy_config:

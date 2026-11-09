@@ -1,0 +1,54 @@
+# FFLUX 운영 Caddy (저장소 루트 compose.yml). 자동 HTTPS로 한 도메인에 모두 묶는다(same-origin).
+# /internal/* 은 어디로도 넘기지 않는다. Spring은 /api/* 만 받는다.
+{
+	# VM 방화벽은 443/udp를 열지 않는다. HTTP/3를 광고하지 않는다.
+	servers {
+		protocols h1 h2
+	}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# 내부 API(MediaMTX 인증 콜백·훅)는 Docker 내부망에서만 부른다.
+	handle /internal/* {
+		respond 404
+	}
+
+	handle /api/* {
+		reverse_proxy app:8080
+	}
+
+	# WHIP/WHEP 시그널링: /media/<path>/whip, /media/<path>/whep (+ 세션 리소스 /whip/<id>) → MediaMTX WebRTC(8889)
+	@webrtc path_regexp ^/media/.+/(whip|whep)(/.*)?$
+	handle @webrtc {
+		uri strip_prefix /media
+		reverse_proxy mediamtx:8889 {
+			# MediaMTX가 주는 절대 경로 Location(/rec/x/whip/<id> 등)에 /media 접두사를 붙인다.
+			header_down Location ^/ /media/
+			# 시청 거절(401)에 붙는 Basic 인증 요구를 지운다. 남기면 브라우저가 자체 로그인 창을 띄운다.
+			header_down -Www-Authenticate
+		}
+	}
+
+	# HLS: /media/<path>/index.m3u8 등 → MediaMTX HLS(8888)
+	handle_path /media/* {
+		reverse_proxy mediamtx:8888 {
+			header_down Location ^/ /media/
+			header_down -Www-Authenticate
+		}
+	}
+
+	# 리먹싱된 녹화 MP4 정적 서빙(Range 지원)
+	handle_path /vod/* {
+		root * /srv/vod
+		file_server
+	}
+
+	# 프론트 정적 파일(client/Dockerfile이 /srv에 담는다). 없는 경로는 SPA 라우팅을 위해 index.html.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
