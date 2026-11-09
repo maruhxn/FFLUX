@@ -119,7 +119,7 @@ curl -s -D - -o /dev/null -X POST https://api.fflux.kro.kr/media/live/0/whep \
 2. 휴대폰을 와이파이에서 끄고 LTE로 같은 방송을 연다. 플레이어 왼쪽 아래가 `WebRTC`인지 본다(`HLS`면 WebRTC 연결이 실패한 것).
 3. 휴대폰 LTE에서 카메라 송출을 시작하고 PC에서 시청한다.
 
-LTE에서 WebRTC가 안 붙으면 coturn을 추가하고 `docs/decisions.md` 1절에 기록한다.
+2026-11-09 첫 배포에서 두 방향 모두 TURN 없이 WebRTC로 연결됐다. 이후 LTE에서 WebRTC가 안 붙으면 coturn을 추가하고 `docs/decisions.md` 1절에 기록한다.
 
 ## Vercel (프론트)
 

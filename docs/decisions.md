@@ -15,6 +15,7 @@
   - `kro.kr`은 Public Suffix List에 없어 `fflux.kro.kr`과 `api.fflux.kro.kr`이 같은 사이트(site)다. 그래서 `SameSite=Lax` 세션 쿠키가 그대로 실린다. 같은 이유로 Let's Encrypt 발급 한도를 다른 `kro.kr` 사용자와 공유한다. 발급이 막히면 Caddy의 ZeroSSL 폴백에 기댄다(첫 배포 때 실제로 한도에 걸렸다. 폴백에는 ACME 계정 이메일 `ACME_EMAIL`이 필요하다).
 - `/internal/*`은 Caddy에서 라우팅하지 않고, Spring 8080 포트는 호스트에 publish하지 않는다(네트워크 격리로 내부 API 보호).
 - WebRTC 미디어 포트 UDP/TCP 8189를 VM에서 직접 개방. TURN 없이 시작하고, VM 배포 후 LTE 확인에서 실패하면 coturn 추가.
+  - 2026-11-09 VM 첫 배포에서 PC 송출 → 휴대폰 LTE 시청, 휴대폰 LTE 카메라 송출 → PC 시청이 모두 WebRTC로 연결됐다. coturn은 넣지 않는다.
 - 비밀값은 VM `.env`에만 두고 저장소에는 `.env.example`만 커밋.
 - 개발 단계 비용을 줄이려고 개발은 로컬에서 한다. 같은 Docker Compose 스택을 PC에 띄우고, 휴대폰 접속용 HTTPS는 무료 터널(Cloudflare Quick Tunnel 또는 ngrok)로 붙인다.
   - 터널은 HTTP만 전달하므로 WHIP/WHEP 시그널링과 HLS는 터널로, WebRTC 미디어는 같은 와이파이에서 PC 내부 IP(`webrtcAdditionalHosts`)로 직접 연결한다.
