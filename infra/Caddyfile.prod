@@ -1,5 +1,5 @@
-# FFLUX 운영 Caddy (저장소 루트 compose.yml). 자동 HTTPS로 한 도메인에 모두 묶는다(same-origin).
-# /internal/* 은 어디로도 넘기지 않는다. Spring은 /api/* 만 받는다.
+# FFLUX 운영 Caddy (저장소 루트 compose.yml). API·미디어 서버(api.fflux.kro.kr)의 자동 HTTPS와 라우팅을 맡는다.
+# 프론트는 Vercel(fflux.kro.kr)이 서빙한다. /internal/* 은 어디로도 넘기지 않는다. Spring은 /api/* 만 받는다.
 {
 	# VM 방화벽은 443/udp를 열지 않는다. HTTP/3를 광고하지 않는다.
 	servers {
@@ -45,10 +45,7 @@
 		file_server
 	}
 
-	# 프론트 정적 파일(client/Dockerfile이 /srv에 담는다). 없는 경로는 SPA 라우팅을 위해 index.html.
 	handle {
-		root * /srv
-		try_files {path} /index.html
-		file_server
+		respond 404
 	}
 }
