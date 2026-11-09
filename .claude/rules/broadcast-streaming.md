@@ -45,8 +45,10 @@ paths:
 
 ## 녹화
 
-- `rec/` path만 녹화된다. 세그먼트가 끝나면 MediaMTX `runOnRecordSegmentComplete` 훅이 ffmpeg로 faststart MP4 리먹싱을 마친 뒤 `recording` 모듈의 internal API를 호출한다.
-- `Recording` 상태는 `PROCESSING → READY / FAILED`. 다시보기 목록과 재생에는 `READY`만 노출한다.
+- `rec/` path만 녹화된다. 세그먼트가 끝나면 MediaMTX `runOnRecordSegmentComplete` 훅이 리먹싱 전에 `processing`, ffmpeg로 faststart MP4 리먹싱을 마치면 `ready`(파일 경로, `ffprobe` 길이) 또는 `failed`를 `recording` 모듈의 internal API로 알린다. `Recording`은 방송 종료 이벤트가 아니라 이 통지로 만들고, 같은 통지가 반복돼도 결과가 같다.
+- `Recording` 상태는 `PROCESSING → READY / FAILED`. 다시보기 목록과 재생에는 `READY`만 노출한다. `FAILED`는 스트리머에게만 보인다.
+- 방송 1건 = 녹화 1건(`broadcast_id` 유니크). 두 번째 세그먼트(12시간 초과)는 무시하고 로그만 남긴다.
+- 리먹싱이 성공하면 원본 fMP4를 지우고, 실패하면 남긴다. 자동 재시도는 없다.
 - 파일 경로는 DB에 저장하고, 재생 URL은 Caddy 정적 서빙 경로로 만든다.
 
 ## 실시간 (SSE)
