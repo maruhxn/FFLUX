@@ -1,4 +1,4 @@
-# 운영용 Spring 이미지. 저장소 루트의 compose.yml이 빌드한다.
+# 운영용 Spring 이미지. GitHub Actions가 빌드해 GHCR에 올린다(로컬 확인은 루트 compose.yml의 --build).
 FROM eclipse-temurin:25-jdk AS build
 WORKDIR /workspace
 COPY . .
