@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, Navigate, useParams } from 'react-router'
 import { useMe } from '../auth/auth'
-import { formatViewerCount, useBroadcast, useIssuePublishToken, type Broadcast } from '../broadcast/broadcast'
+import { useBroadcast, useIssuePublishToken, type Broadcast } from '../broadcast/broadcast'
 import { useBroadcastEvents } from '../broadcast/events'
 import {
   captureCamera,
@@ -23,8 +23,7 @@ import {
   type PublishSession,
 } from '../broadcast/publishSession'
 import { EndBroadcastButton } from '../components/EndBroadcastButton'
-import { StatusBadge } from '../components/StatusBadge'
-import { StreamingTime } from '../components/StreamingTime'
+import { ActionBar, Hints, Row, STAGE_BUTTON, StageMessage, Studio } from '../components/Studio'
 
 /** 송출(`/broadcasts/:id/publish`). PC는 화면 공유, 모바일은 카메라로 보낸다. 스트리머만, READY 방송에서 시작한다. */
 export function BroadcastPublishPage() {
@@ -212,101 +211,94 @@ function PrepareView({ broadcast }: { broadcast: Broadcast }) {
     }
   }
 
+  const sourceButton =
+    camera && capture?.facing ? (
+      <FlipCameraButton facing={capture.facing} onClick={flip} disabled={starting} />
+    ) : (
+      <button type="button" onClick={selectSource} className={SECONDARY_BUTTON}>
+        {camera ? '카메라 켜기' : capture ? '화면 다시 고르기' : '공유할 화면 고르기'}
+      </button>
+    )
+
   return (
-    <div className="space-y-4">
-      <Title broadcast={broadcast} status={broadcast.status} />
-
-      {step === 'record' && (
-        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-sm space-y-4 rounded-lg bg-neutral-900 p-6">
-            <h2 className="text-lg font-semibold">방송 시작</h2>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={record} onChange={(e) => setRecord(e.target.checked)} />
-              녹화하기 (끝난 뒤 다시보기로 남습니다)
-            </label>
-            <div className="flex justify-end gap-2">
-              <Link
-                to={`/broadcasts/${broadcast.id}`}
-                className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800"
-              >
-                취소
-              </Link>
-              <button
-                type="button"
-                onClick={() => setStep('capture')}
-                className="rounded-md bg-emerald-500 px-3 py-1.5 text-sm font-semibold text-neutral-950"
-              >
-                다음
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <Preview stream={outgoing?.stream ?? null} />
-
-      {step === 'capture' && (
-        <div className="space-y-3">
-          <p className="text-sm text-neutral-400">
-            녹화: {record ? '함' : '안 함'} ·{' '}
-            {camera
-              ? '송출 중 다른 앱으로 전환하거나 화면을 끄면 방송이 종료됩니다.'
-              : '마이크 소리가 함께 나갑니다. 공유 창에서 "탭 오디오 공유"(macOS) 또는 "시스템 오디오 공유"(Windows)를 켜면 화면 소리도 섞입니다.'}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {camera && capture?.facing ? (
-              <FlipCameraButton facing={capture.facing} onClick={flip} disabled={starting} />
-            ) : (
-              <button
-                type="button"
-                onClick={selectSource}
-                className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800"
-              >
-                {camera ? '카메라 켜기' : capture ? '화면 다시 고르기' : '공유할 화면 고르기'}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={start}
-              disabled={!capture || starting}
-              className="rounded-md bg-emerald-500 px-3 py-1.5 text-sm font-semibold text-neutral-950 disabled:opacity-50"
-            >
-              송출 시작
-            </button>
-          </div>
-          {pipAvailable && (
-            <div className="flex flex-wrap items-center gap-3 text-sm">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={cam !== null}
-                  disabled={!capture || starting}
-                  onChange={(e) => (e.target.checked ? void switchCam(null) : turnOffCam())}
-                />
-                캠 같이 보내기 (화면 우하단{capture ? '' : ', 화면을 먼저 고르세요'})
-              </label>
-              {cam && cams.length > 1 && (
-                <select
-                  value={cam.getVideoTracks()[0]?.getSettings().deviceId ?? ''}
-                  disabled={starting}
-                  onChange={(e) => void switchCam(e.target.value)}
-                  className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1"
-                >
-                  {cams.map((d, i) => (
-                    <option key={d.deviceId} value={d.deviceId}>
-                      {d.label || `캠 ${i + 1}`}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
+    <Studio
+      heading="방송하기"
+      broadcast={broadcast}
+      stage={
+        <VideoStage stream={outgoing?.stream ?? null}>
+          {!outgoing && step === 'capture' && (
+            <StageMessage
+              title={camera ? '카메라를 켜면 여기에 미리보기가 나옵니다.' : '공유할 화면을 고르면 여기에 미리보기가 나옵니다.'}
+              detail={camera ? '휴대폰 카메라와 마이크로 송출합니다.' : '탭, 창, 전체 화면 중 하나를 고를 수 있습니다.'}
+              action={
+                <button type="button" onClick={selectSource} className={STAGE_BUTTON}>
+                  {camera ? '카메라 켜기' : '공유할 화면 고르기'}
+                </button>
+              }
+            />
           )}
-          {capture && <p className="text-xs text-neutral-500">소리: {capture.audioLabel}</p>}
-        </div>
-      )}
+        </VideoStage>
+      }
+    >
+      {step === 'record' && <RecordDialog broadcast={broadcast} record={record} onChange={setRecord} onNext={() => setStep('capture')} />}
 
-      {message && <p className="text-sm text-red-400">{message}</p>}
-    </div>
+      <TitleRow broadcast={broadcast} />
+      <Row label="녹화">
+        <p className="pt-2.5 font-semibold">{record ? '녹화함' : '녹화 안 함'}</p>
+        <Hints lines={[record ? RECORD_OPTIONS[0].detail : RECORD_OPTIONS[1].detail]} />
+      </Row>
+      <Row label={camera ? '카메라' : '송출 화면'}>
+        <div>{sourceButton}</div>
+        <Hints
+          lines={[
+            camera
+              ? '송출 중 다른 앱으로 전환하거나 화면을 끄면 방송이 종료됩니다.'
+              : '마이크 소리가 함께 나갑니다. 공유 창에서 "탭 오디오 공유"(macOS) 또는 "시스템 오디오 공유"(Windows)를 켜면 화면 소리도 섞입니다.',
+          ]}
+        />
+      </Row>
+      {pipAvailable && (
+        <Row label="캠">
+          <div className="flex flex-wrap items-center gap-3 pt-1.5">
+            <Switch
+              checked={cam !== null}
+              disabled={!capture || starting}
+              onChange={(on) => (on ? void switchCam(null) : turnOffCam())}
+            />
+            {cam && cams.length > 1 && (
+              <select
+                value={cam.getVideoTracks()[0]?.getSettings().deviceId ?? ''}
+                disabled={starting}
+                onChange={(e) => void switchCam(e.target.value)}
+                className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+              >
+                {cams.map((d, i) => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {d.label || `캠 ${i + 1}`}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <Hints lines={capture ? ['화면 우하단에 캠을 겹쳐 보냅니다.'] : ['화면 우하단에 캠을 겹쳐 보냅니다.', '화면을 먼저 고르세요.']} />
+        </Row>
+      )}
+      {capture && (
+        <Row label="소리">
+          <p className="pt-2.5 font-semibold break-keep">{capture.audioLabel}</p>
+        </Row>
+      )}
+      <ActionBar error={message}>
+        <button
+          type="button"
+          onClick={start}
+          disabled={!capture || starting}
+          className="rounded-md bg-emerald-500 px-5 py-2 font-semibold text-neutral-950 disabled:opacity-50"
+        >
+          송출 시작
+        </button>
+      </ActionBar>
+    </Studio>
   )
 }
 
@@ -331,32 +323,28 @@ function PublishingView({ broadcast, session }: { broadcast: Broadcast; session:
   }
 
   return (
-    <div className="space-y-4">
-      <Title broadcast={current} status={current.status} />
-      <Preview stream={session.stream} />
-      <p className="text-sm text-neutral-300">
-        {current.status === 'LIVE' ? (
-          <>
-            방송 중입니다. {formatViewerCount(current.viewerCount ?? 0)} 시청 중
-            {current.startedAt && (
-              <>
-                , <StreamingTime startedAt={current.startedAt} />
-              </>
-            )}
-            .
-          </>
-        ) : (
-          '송출을 연결했습니다. 미디어 서버가 영상을 받으면 방송이 시작됩니다.'
-        )}{' '}
-        다른
-        페이지로 옮겨도 송출은 이어집니다. 소리: {session.audioLabel}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {session.facing && <FlipCameraButton facing={session.facing} onClick={flip} disabled={flipping} />}
+    <Studio heading="방송하기" broadcast={current} stage={<VideoStage stream={session.stream} />}>
+      <TitleRow broadcast={current} />
+      <Row label="송출">
+        <p className="pt-2.5 font-semibold break-keep">
+          {current.status === 'LIVE' ? '방송 중입니다.' : '송출을 연결했습니다. 미디어 서버가 영상을 받으면 방송이 시작됩니다.'}
+        </p>
+        <Hints lines={['다른 페이지로 옮겨도 송출은 이어집니다.']} />
+      </Row>
+      {session.facing && (
+        <Row label="카메라">
+          <div>
+            <FlipCameraButton facing={session.facing} onClick={flip} disabled={flipping} />
+          </div>
+        </Row>
+      )}
+      <Row label="소리">
+        <p className="pt-2.5 font-semibold break-keep">{session.audioLabel}</p>
+      </Row>
+      <ActionBar error={message}>
         <EndBroadcastButton broadcastId={broadcast.id} />
-      </div>
-      {message && <p className="text-sm text-red-400">{message}</p>}
-    </div>
+      </ActionBar>
+    </Studio>
   )
 }
 
@@ -369,26 +357,119 @@ function FlipCameraButton({ facing, onClick, disabled }: { facing: Facing; onCli
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-50"
+      className={SECONDARY_BUTTON}
     >
       {facing === 'user' ? '후면 카메라로' : '전면 카메라로'}
     </button>
   )
 }
 
-function Title({ broadcast, status }: { broadcast: Broadcast; status: Broadcast['status'] }) {
+const SECONDARY_BUTTON =
+  'rounded-md border border-neutral-700 px-4 py-2 text-sm font-semibold hover:bg-neutral-800 disabled:opacity-50'
+
+const RECORD_OPTIONS = [
+  { value: true, label: '녹화하기', detail: '방송이 끝나면 다시보기로 남고, 시청자가 댓글을 달 수 있습니다.' },
+  { value: false, label: '녹화하지 않기', detail: '라이브로만 방송하고 다시보기는 남지 않습니다.' },
+]
+
+/** 방송 시작 모달. 녹화 여부는 송출 토큰을 받을 때 함께 보내므로 화면을 고르기 전에 정한다. */
+function RecordDialog({
+  broadcast,
+  record,
+  onChange,
+  onNext,
+}: {
+  broadcast: Broadcast
+  record: boolean
+  onChange: (record: boolean) => void
+  onNext: () => void
+}) {
   return (
-    <div className="flex items-center gap-2">
-      <StatusBadge status={status} />
-      <h1 className="text-xl font-bold break-words">{broadcast.title}</h1>
+    <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/70 p-4">
+      <div role="dialog" aria-modal="true" aria-labelledby="record-dialog-title" className="w-full max-w-md overflow-hidden rounded-lg border border-neutral-800 bg-neutral-950">
+        <div className="border-b border-neutral-800 px-5 py-4">
+          <h2 id="record-dialog-title" className="text-lg font-bold">
+            방송 시작
+          </h2>
+          <p className="mt-1 truncate text-sm text-neutral-400">{broadcast.title}</p>
+        </div>
+        <div role="radiogroup" aria-label="녹화" className="space-y-2 px-5 py-5">
+          <p className="mb-3 text-sm font-semibold text-neutral-300">녹화</p>
+          {RECORD_OPTIONS.map((option) => (
+            <label
+              key={option.label}
+              className="flex cursor-pointer gap-3 rounded-md border border-neutral-700 p-3 has-checked:border-emerald-500 has-checked:bg-emerald-500/10"
+            >
+              <input
+                type="radio"
+                name="record"
+                checked={record === option.value}
+                onChange={() => onChange(option.value)}
+                className="mt-1 accent-emerald-500"
+              />
+              <span className="space-y-0.5 break-keep">
+                <span className="block font-semibold">{option.label}</span>
+                <span className="block text-xs text-neutral-400">{option.detail}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-neutral-800 px-5 py-4">
+          <Link to={`/broadcasts/${broadcast.id}`} className={SECONDARY_BUTTON}>
+            취소
+          </Link>
+          <button
+            type="button"
+            onClick={onNext}
+            className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950"
+          >
+            다음
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
 
-function Preview({ stream }: { stream: MediaStream | null }) {
+function TitleRow({ broadcast }: { broadcast: Broadcast }) {
+  return (
+    <Row label="방송 제목">
+      <div className="flex items-start justify-between gap-3 pt-2.5">
+        <p className="min-w-0 font-semibold break-words">{broadcast.title}</p>
+        <Link to={`/broadcasts/${broadcast.id}/edit`} className="shrink-0 text-sm text-neutral-400 underline hover:text-white">
+          수정
+        </Link>
+      </div>
+    </Row>
+  )
+}
+
+/** 미리보기 영상 자리. 영상이 없을 때 `children`을 가운데에 겹친다. */
+function VideoStage({ stream, children }: { stream: MediaStream | null; children?: ReactNode }) {
   const ref = useRef<HTMLVideoElement>(null)
   useEffect(() => {
     if (ref.current) ref.current.srcObject = stream
   }, [stream])
-  return <video ref={ref} autoPlay muted playsInline className="aspect-video w-full rounded-lg bg-neutral-900" />
+  return (
+    <div className="relative aspect-video bg-black">
+      <video ref={ref} autoPlay muted playsInline className="size-full object-contain" />
+      {children && <div className="absolute inset-0 flex items-center justify-center">{children}</div>}
+    </div>
+  )
+}
+
+function Switch({ checked, disabled, onChange }: { checked: boolean; disabled: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <label className="inline-flex cursor-pointer items-center gap-2 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-50">
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        className="peer sr-only"
+      />
+      <span className="relative h-6 w-11 rounded-full bg-neutral-700 transition peer-checked:bg-emerald-500 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-300 after:absolute after:top-0.5 after:left-0.5 after:size-5 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-5" />
+      {checked ? '켜짐' : '꺼짐'}
+    </label>
+  )
 }
