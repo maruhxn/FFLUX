@@ -23,13 +23,16 @@
 - MediaMTX 셀프호스팅. 송출은 WHIP, 시청은 WHEP(WebRTC)이며 실패 시 HLS로 자동 폴백.
 - 송출 코덱은 `setCodecPreferences`로 H264 강제, 오디오는 Opus.
 - PC 송출: 화면 공유 소리(탭/시스템)와 마이크를 Web Audio API로 믹싱해 오디오 트랙 하나로 송출.
+  - 캠 PiP(선택): 송출 준비 화면에서 캠을 켜면 화면 우하단(가로·세로 1/4 상자, 짧은 변 3% 여백)에 캠을 겹쳐 영상 트랙 하나로 보낸다. 서버·MediaMTX·시청·녹화는 그대로다.
+  - 합성은 Worker에서 `MediaStreamTrackProcessor`로 받은 프레임을 `OffscreenCanvas`에 그려 `MediaStreamTrackGenerator`로 내보낸다. 타이머가 아니라 프레임 도착마다 그려(최대 30fps) 송출 탭이 백그라운드여도 멈추지 않는다. 이 API가 없는 브라우저(Firefox, Safari)는 캠 토글을 숨긴다.
+  - 송출 종료 판단은 합성 트랙이 아니라 화면 트랙의 끝("공유 중지")으로 한다. 캠이 끝나면 화면만 이어서 보낸다. 캠 권한이 없거나 캠이 없으면 안내하고 화면만으로 송출한다.
 - 모바일 송출: 별도 앱 없이 모바일 웹에서 카메라+마이크 송출. 송출 중 Wake Lock으로 화면 꺼짐 방지.
   - 진입은 주소 하나(`/broadcasts/:id/publish`)이고, 화면 공유를 못 하거나(`getDisplayMedia` 없음) 주 입력이 터치(`pointer: coarse`)인 기기는 카메라 송출 화면이 열린다.
   - 전·후면 카메라는 송출 전과 송출 중 모두 바꿀 수 있다. 송출 중에는 연결을 유지하고 `replaceTrack`으로 트랙을 갈아 끼운다(마이크는 복제본으로). iOS는 카메라를 하나만 열 수 있어 지금 카메라를 끈 뒤 반대쪽을 연다.
   - 카메라 트랙이 끝나면(운영체제의 카메라 회수) PC의 "공유 중지"처럼 종료를 요청한다. 앱 전환 때 꺼진 것일 수 있으므로 송출 끊김으로 안내한다.
   - 이 탭이 종료를 요청하지 않았는데 방송이 끝나면 송출 화면에 송출 끊김 안내(앱 전환, 화면 꺼짐, 네트워크 끊김)를 보여 준다.
 - 지원 환경(README에 명시)
-  - PC 송출: Chrome/Edge 최신 (시스템 소리는 Windows만, macOS는 탭 소리만)
+  - PC 송출: Chrome/Edge 최신, 화면 + 선택적 캠 PiP (시스템 소리는 Windows만, macOS는 탭 소리만)
   - 모바일 송출: Android Chrome, iOS Safari
   - 시청: 최신 브라우저 전부
 
@@ -240,6 +243,7 @@ com.maruhxn.fflux.<module>
 ## 10. 프론트엔드
 
 - React + Vite + TypeScript, React Router, TanStack Query, Tailwind CSS. 별도 상태 관리 라이브러리는 쓰지 않는다.
+- 클라이언트 단위 테스트는 Vitest. 미디어 API에 기대지 않는 순수 로직만 대상으로 한다.
 - 반응형 화면 하나, 송출 화면만 PC용(화면 공유)과 모바일용(카메라)으로 분리.
 - 송출 중에는 헤더에 "송출 중" 표시를 두어 어느 페이지에서든 송출 화면(방송 종료 버튼)으로 돌아가게 한다.
 

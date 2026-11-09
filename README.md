@@ -22,7 +22,7 @@
 
 | 기능 | 환경 |
 |---|---|
-| PC 송출 | Chrome/Edge 최신. 화면 소리는 Windows에서 시스템 소리, macOS에서는 탭 소리만 |
+| PC 송출 | Chrome/Edge 최신. 화면 공유에 캠을 우하단 PiP로 겹쳐 보낼 수 있다(선택). 화면 소리는 Windows에서 시스템 소리, macOS에서는 탭 소리만 |
 | 모바일 송출 | Android Chrome, iOS Safari. 카메라와 마이크로 송출하고, 송출 중 화면이 꺼지지 않게 한다(Wake Lock). 다른 앱으로 전환하거나 화면을 끄면 송출이 끊겨 방송이 종료된다 |
 | 시청 | 최신 브라우저 전부. WebRTC(WHEP)로 연결하고, 안 되면 HLS로 자동 전환한다. Safari(iOS 포함)는 브라우저 기본 HLS, 그 밖의 브라우저는 hls.js로 재생한다 |
 
