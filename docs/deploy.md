@@ -184,4 +184,4 @@ gh variable set GCP_WORKLOAD_IDENTITY_PROVIDER --body "projects/$N/locations/glo
 gh variable set GCP_DEPLOY_SERVICE_ACCOUNT --body "$SA"
 ```
 
-GHCR 패키지 `fflux-app`은 공개(public)로 둔다. VM이 로그인 없이 이미지를 받는다. 패키지는 첫 이미지 푸시 때 비공개로 생기므로, 첫 배포가 `docker compose pull`에서 실패하면 GitHub 패키지 설정(Package settings → Change visibility)에서 Public으로 바꾸고 재실행한다.
+GHCR 패키지 `fflux-app`은 공개다. 공개 저장소의 workflow가 처음 올리면서 저장소에 연결돼 공개로 생겼고, VM은 로그인 없이 이미지를 받는다. 비공개로 바뀌면 VM의 `docker compose pull`이 실패하니 패키지 설정에서 Public으로 되돌린다.
