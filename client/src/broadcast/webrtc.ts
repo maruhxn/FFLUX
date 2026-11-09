@@ -16,10 +16,10 @@ export function waitIceGathering(pc: RTCPeerConnection, timeoutMs = 3000) {
   })
 }
 
-/** WHIP·WHEP 응답의 Location(세션 리소스 URL, 종료 시 DELETE). Caddy가 절대 경로에 /media 접두사를 붙여 준다. */
+/** WHIP·WHEP 응답의 Location(세션 리소스 URL, 종료 시 DELETE). Caddy가 절대 경로에 /media 접두사를 붙여 주고, 요청한 미디어 서버 기준으로 푼다. */
 export function resourceUrlOf(response: Response): string | null {
   const location = response.headers.get('Location')
-  return location ? new URL(location, window.location.href).href : null
+  return location ? new URL(location, response.url).href : null
 }
 
 /** WHIP·WHEP 세션을 끝낸다: 리소스 DELETE 후 PeerConnection 정리. */

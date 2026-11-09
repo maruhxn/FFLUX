@@ -12,11 +12,14 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository
 import org.springframework.security.web.context.SecurityContextRepository
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import tools.jackson.databind.json.JsonMapper
 
 /**
  * 세션(쿠키) 기반 인증. 로그인·로그아웃은 [AuthController]가 직접 처리하므로 폼 로그인과 기본 로그아웃은 끈다.
- * CSRF는 SameSite=Lax 세션 쿠키로 막고 토큰 방식은 쓰지 않는다(docs/decisions.md 8절).
+ * CSRF는 SameSite=Lax 세션 쿠키와 CORS 출처 허용 목록으로 막고 토큰 방식은 쓰지 않는다(docs/decisions.md 8절).
  */
 @Configuration(proxyBeanMethods = false)
 class SecurityConfig {
@@ -29,6 +32,8 @@ class SecurityConfig {
     ): SecurityFilterChain {
         http
             .csrf { it.disable() }
+            // 허용 목록에 없는 출처(Origin)가 보낸 요청은 처리하지 않고 403으로 거절한다.
+            .cors { }
             .formLogin { it.disable() }
             .httpBasic { it.disable() }
             .logout { it.disable() }
@@ -46,6 +51,17 @@ class SecurityConfig {
                 }
             }
         return http.build()
+    }
+
+    @Bean
+    fun corsConfigurationSource(properties: CorsProperties): CorsConfigurationSource {
+        val configuration = CorsConfiguration().apply {
+            allowedOrigins = properties.allowedOrigins
+            allowedMethods = listOf("GET", "POST", "PATCH", "DELETE")
+            allowedHeaders = listOf("Content-Type")
+            allowCredentials = true
+        }
+        return UrlBasedCorsConfigurationSource().apply { registerCorsConfiguration("/api/**", configuration) }
     }
 
     @Bean

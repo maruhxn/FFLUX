@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { api } from '../api/client'
 import type { BroadcastDetail } from './broadcast'
-import { BROADCAST_STATUS_EVENT, broadcastEventsUrl, parseStatusMessage } from './events'
+import { BROADCAST_STATUS_EVENT, openBroadcastEvents, parseStatusMessage } from './events'
 import { flipCamera, releaseCapture, type Capture, type Facing } from './capture'
 import { closeSession, type WebRtcSession } from './webrtc'
 import { whipPublish } from './whip'
@@ -117,7 +117,7 @@ export async function startPublish(broadcastId: number, capture: Capture, whipUr
   const releaseIfEnded = (status: string | undefined) => {
     if (status === 'ENDED' && active?.whip === whip) void release()
   }
-  const events = new EventSource(broadcastEventsUrl(broadcastId))
+  const events = openBroadcastEvents(broadcastId)
   events.addEventListener(BROADCAST_STATUS_EVENT, (e) => releaseIfEnded(parseStatusMessage(e).status))
   events.addEventListener('open', async () => {
     const broadcast = await api<BroadcastDetail>(`/api/broadcasts/${broadcastId}`).catch(() => null)

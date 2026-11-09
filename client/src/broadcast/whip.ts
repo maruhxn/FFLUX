@@ -1,4 +1,5 @@
 // WHIP 송출(브라우저 → MediaMTX). 스파이크(infra/spike/spike.js)에서 확인한 방식 그대로다.
+import { apiUrl } from '../api/client'
 import { resourceUrlOf, waitIceGathering, type WebRtcSession } from './webrtc'
 
 /** 송출 트랜시버가 원하는 코덱만 협상하게 한다(영상 H264, 오디오 Opus). 지원하지 않으면 브라우저 기본값을 쓴다. */
@@ -26,7 +27,7 @@ export async function whipPublish(whipUrl: string, token: string, stream: MediaS
     }
     await pc.setLocalDescription(await pc.createOffer())
     await waitIceGathering(pc)
-    const response = await fetch(whipUrl, {
+    const response = await fetch(apiUrl(whipUrl), {
       method: 'POST',
       headers: { 'Content-Type': 'application/sdp', Authorization: `Bearer ${token}` },
       body: pc.localDescription?.sdp,

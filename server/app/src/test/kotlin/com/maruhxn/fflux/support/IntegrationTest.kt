@@ -19,6 +19,7 @@ import org.springframework.web.client.RestClient
         "fflux.test-accounts.enabled=true",
         "fflux.test-accounts.streamer-password=$TEST_STREAMER_PASSWORD",
         "fflux.test-accounts.viewer-password=$TEST_VIEWER_PASSWORD",
+        "fflux.cors.allowed-origins=$TEST_FRONT_ORIGIN",
     ],
 )
 @Import(TestcontainersConfiguration::class, TestClockConfiguration::class, FakeMediaPublisherKickerConfiguration::class)
@@ -67,3 +68,4 @@ abstract class IntegrationTest {
 
 const val TEST_STREAMER_PASSWORD = "streamer-test-pw"
 const val TEST_VIEWER_PASSWORD = "viewer-test-pw"
+const val TEST_FRONT_ORIGIN = "https://front.example"

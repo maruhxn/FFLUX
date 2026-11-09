@@ -1,3 +1,4 @@
+import { apiUrl } from '../api/client'
 import { closeSession, resourceUrlOf, waitIceGathering, type WebRtcSession } from './webrtc'
 
 const DISCONNECTED_GRACE_MS = 5000
@@ -22,7 +23,7 @@ export async function whepPlay(
     pc.addEventListener('track', (e) => stream.addTrack(e.track))
     await pc.setLocalDescription(await pc.createOffer())
     await waitIceGathering(pc)
-    const response = await fetch(whepUrl, {
+    const response = await fetch(apiUrl(whepUrl), {
       method: 'POST',
       headers: { 'Content-Type': 'application/sdp' },
       body: pc.localDescription?.sdp,

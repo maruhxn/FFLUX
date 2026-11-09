@@ -1,3 +1,5 @@
+import { apiUrl } from '../api/client'
+
 /**
  * HLS 시청(WHEP 폴백). Safari(iOS 포함)는 브라우저 기본 HLS, 그 밖에는 hls.js를 쓴다.
  * 최근 Chrome도 canPlayType이 참이지만 Opus가 든 HLS를 재생하지 못해 Safari만 기본 재생을 쓴다(스파이크 #2에서 확인).
@@ -10,7 +12,7 @@ export async function hlsPlay(
 ): Promise<() => void> {
   const isSafari = /^((?!chrome|android|crios|fxios|edg).)*safari/i.test(navigator.userAgent)
   if (isSafari && video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = hlsUrl
+    video.src = apiUrl(hlsUrl)
     video.addEventListener('error', onFailed, { once: true })
     return () => {
       video.removeEventListener('error', onFailed)
@@ -26,7 +28,7 @@ export async function hlsPlay(
   if (!Hls.isSupported()) throw new Error('이 브라우저는 HLS를 재생할 수 없습니다.')
   const hls = new Hls()
   hls.on(Hls.Events.ERROR, (_, data) => data.fatal && onFailed())
-  hls.loadSource(hlsUrl)
+  hls.loadSource(apiUrl(hlsUrl))
   hls.attachMedia(video)
   return () => hls.destroy()
 }

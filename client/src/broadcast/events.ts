@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { apiUrl } from '../api/client'
 import { broadcastDetailKey, type BroadcastDetail, type BroadcastStatus } from './broadcast'
 
-/** 방송별 SSE 주소. */
-export const broadcastEventsUrl = (id: number) => `/api/broadcasts/${id}/events`
+/** 방송별 SSE를 연다. API 서버의 출처가 달라도 세션 쿠키를 실어 로그인한 시청자로 세게 한다. */
+export const openBroadcastEvents = (id: number) =>
+  new EventSource(apiUrl(`/api/broadcasts/${id}/events`), { withCredentials: true })
 
 /**
  * SSE 이벤트 이름. `broadcast-status`는 {@link BroadcastStatusMessage}, `broadcast-updated`는 `{title, description}`,
@@ -29,7 +31,7 @@ export function useBroadcastEvents(id: number, enabled: boolean) {
 
   useEffect(() => {
     if (!enabled) return
-    const source = new EventSource(broadcastEventsUrl(id))
+    const source = openBroadcastEvents(id)
     const refetch = () => void queryClient.invalidateQueries({ queryKey: broadcastDetailKey(id) })
     source.addEventListener('open', refetch)
     source.addEventListener(BROADCAST_STATUS_EVENT, refetch)
