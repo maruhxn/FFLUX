@@ -12,7 +12,7 @@ paths:
 
 # 인프라
 
-- GCP Compute Engine VM 1대(서울 `asia-northeast3`, `e2-standard-2`) + Docker Compose: Spring, MySQL 8, MediaMTX(`bluenviron/mediamtx:latest-ffmpeg`, 훅 실행에 셸과 ffmpeg가 필요), Caddy.
+- GCP Compute Engine VM 1대(서울 `asia-northeast3`, `e2-small` + 스왑 2GB) + Docker Compose: Spring, MySQL 8, MediaMTX(`bluenviron/mediamtx:latest-ffmpeg`, 훅 실행에 셸과 ffmpeg가 필요), Caddy.
 - Caddy: 자동 HTTPS, 프론트 정적 파일, `/api/*` → Spring, `/media/*` → MediaMTX(WHIP/WHEP/HLS), 녹화 디렉터리 정적 서빙(Range 지원). `/internal/*`은 라우팅하지 않는다.
 - 호스트에 publish하는 포트: 80/443(Caddy), 8189 UDP/TCP(MediaMTX WebRTC). GCP VPC 방화벽 규칙도 이 포트만 연다. Spring 8080, MySQL, MediaMTX API는 Docker 내부망에만 둔다.
 - MediaMTX 설정 요점

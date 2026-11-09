@@ -4,7 +4,8 @@
 
 ## 1. 인프라
 
-- GCP Compute Engine VM 1대(서울 `asia-northeast3`, `e2-standard-2`) + Docker Compose: Spring Boot, MySQL 8, MediaMTX(`bluenviron/mediamtx:latest-ffmpeg`), Caddy.
+- GCP Compute Engine VM 1대(서울 `asia-northeast3`, `e2-small` + 스왑 2GB) + Docker Compose: Spring Boot, MySQL 8, MediaMTX(`bluenviron/mediamtx:latest-ffmpeg`), Caddy.
+  - 사양은 크레딧(약 ₩40만, 2027-02-06 만료) 안에서 스택이 돌아가는 최소로 잡았다. 처음엔 `e2-standard-2`(8GB)였으나 만료까지 크레딧의 3/4을 써서 `e2-small`(2GB)로 낮췄다. VM에서 Gradle·npm 빌드도 하므로 메모리 부족에 대비해 스왑 2GB를 둔다. 부족하면 `e2-medium`(4GB)으로 올린다.
   - 처음엔 AWS였으나 바꿨다. Oracle Cloud Always Free는 가입(카드 확인)이 되지 않았고, GCP의 상시 무료 VM(`e2-micro`, 1GB, 미국 리전)은 스택을 올리기에 작다. 그래서 신규 크레딧(90일)으로 서울 리전 VM을 쓴다. 마감(11/19)과 평가 기간이 크레딧 기간 안에 들어온다.
   - 외부 IP는 고정(예약) IP로 잡아 `webrtcAdditionalHosts`와 DNS에 쓴다. 방화벽은 VPC 방화벽 규칙으로 연다.
 - 도메인 `fflux.kro.kr` 하나 + Caddy 자동 HTTPS(`getDisplayMedia`/`getUserMedia`가 HTTPS에서만 동작). 모든 경로를 같은 호스트에 두므로 서브도메인은 쓰지 않는다. `kro.kr`은 Public Suffix List에 없어 Let's Encrypt 발급 한도를 다른 `kro.kr` 사용자와 공유한다. 발급이 막히면 Caddy의 ZeroSSL 폴백에 기댄다.

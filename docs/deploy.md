@@ -16,6 +16,13 @@ Caddy는 `DOMAIN`으로 자동 HTTPS를 받고 `/api/*` → Spring, `/media/*` �
 [gcloud CLI](https://cloud.google.com/sdk/docs/install)로 로그인하고 프로젝트를 고른 뒤 실행한다. 콘솔에서 같은 값으로 만들어도 된다.
 
 ```bash
+# 전용 프로젝트를 만들고 결제 계정(무료 체험 크레딧)에 연결
+gcloud projects create fflux-maruhxn --name=fflux
+gcloud billing accounts list
+gcloud billing projects link fflux-maruhxn --billing-account=<결제 계정 ID>
+gcloud config set project fflux-maruhxn
+gcloud services enable compute.googleapis.com iap.googleapis.com
+
 REGION=asia-northeast3
 ZONE=asia-northeast3-a
 
@@ -23,11 +30,11 @@ ZONE=asia-northeast3-a
 gcloud compute addresses create fflux-ip --region=$REGION
 gcloud compute addresses describe fflux-ip --region=$REGION --format='value(address)'   # 이 IP를 DNS와 .env에 쓴다
 
-# VM (Debian 12, e2-standard-2, 디스크 30GB)
+# VM (Debian 12, e2-small, 디스크 20GB)
 gcloud compute instances create fflux \
-  --zone=$ZONE --machine-type=e2-standard-2 \
+  --zone=$ZONE --machine-type=e2-small \
   --image-family=debian-12 --image-project=debian-cloud \
-  --boot-disk-size=30GB \
+  --boot-disk-size=20GB --boot-disk-type=pd-balanced \
   --address=fflux-ip --tags=fflux-web
 
 # 방화벽: 80/443(TCP), 8189(UDP/TCP)만 연다
@@ -52,6 +59,10 @@ gcloud compute firewall-rules create fflux-web \
 
 ```bash
 gcloud compute ssh fflux --zone=asia-northeast3-a --tunnel-through-iap
+
+# 스왑 2GB(e2-small 메모리 2GB에서 Gradle·npm 빌드를 버티게)
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
 # Docker Engine + Compose 플러그인
 curl -fsSL https://get.docker.com | sudo sh
