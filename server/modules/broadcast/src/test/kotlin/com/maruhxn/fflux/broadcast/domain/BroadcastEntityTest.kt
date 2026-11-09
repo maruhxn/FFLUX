@@ -17,7 +17,9 @@ class BroadcastEntityTest {
     private fun register() =
         Broadcast.register(STREAMER, "스트리머", BroadcastTitle.of("원래 제목"), null, now)
 
-    private fun live() = register().apply { confirmPublishStarted() }
+    private val liveAt = now.plusMinutes(10)
+
+    private fun live() = register().apply { confirmPublishStarted(liveAt) }
 
     private fun ended() = live().apply { endByDisconnect() }
 
@@ -150,26 +152,29 @@ class BroadcastEntityTest {
     // 송출 시작 확인
 
     @Test
-    fun `송출 시작을 확인하면 READY 방송이 LIVE가 된다`() {
+    fun `송출 시작을 확인하면 READY 방송이 LIVE가 되고 그 시각을 시작 시각으로 남긴다`() {
         val broadcast = register()
+        assertNull(broadcast.startedAt)
 
-        assertTrue(broadcast.confirmPublishStarted())
+        assertTrue(broadcast.confirmPublishStarted(liveAt))
         assertEquals(BroadcastStatus.LIVE, broadcast.status)
+        assertEquals(liveAt, broadcast.startedAt)
     }
 
     @Test
     fun `이미 LIVE인 방송의 송출 시작 확인은 아무것도 바꾸지 않는다`() {
         val broadcast = live()
 
-        assertFalse(broadcast.confirmPublishStarted())
+        assertFalse(broadcast.confirmPublishStarted(liveAt.plusMinutes(1)))
         assertEquals(BroadcastStatus.LIVE, broadcast.status)
+        assertEquals(liveAt, broadcast.startedAt)
     }
 
     @Test
     fun `ENDED 방송은 송출 시작을 확인할 수 없다`() {
         val broadcast = ended()
 
-        assertFailsWith<ConflictException> { broadcast.confirmPublishStarted() }
+        assertFailsWith<ConflictException> { broadcast.confirmPublishStarted(liveAt.plusMinutes(1)) }
         assertEquals(BroadcastStatus.ENDED, broadcast.status)
     }
 

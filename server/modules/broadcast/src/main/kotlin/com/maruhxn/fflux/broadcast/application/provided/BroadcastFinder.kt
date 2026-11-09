@@ -26,6 +26,8 @@ data class BroadcastResult(
     val description: String?,
     val status: BroadcastStatus,
     val createdAt: LocalDateTime,
+    /** LIVE가 된 시각(방송 경과 시간의 기준). LIVE가 된 적 없으면 null. */
+    val startedAt: LocalDateTime?,
     /** LIVE 방송의 지금 시청자 수. LIVE가 아니면 null. */
     val viewerCount: Int?,
 )

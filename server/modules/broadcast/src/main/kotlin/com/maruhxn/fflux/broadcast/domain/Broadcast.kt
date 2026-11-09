@@ -59,6 +59,10 @@ class Broadcast protected constructor(
     var deletedAt: LocalDateTime? = null
         protected set
 
+    /** 송출 시작을 확인해 LIVE가 된 시각. 방송 경과 시간의 기준이다. LIVE가 된 적 없으면 null. */
+    var startedAt: LocalDateTime? = null
+        protected set
+
     @Column(nullable = false)
     var recordingEnabled: Boolean = false
         protected set
@@ -98,9 +102,12 @@ class Broadcast protected constructor(
     /** 시청할 수 있는 방송인지. 시청 허가에서 본다. */
     fun isWatchable(): Boolean = deletedAt == null && status == BroadcastStatus.LIVE
 
-    /** 송출 시작 확인: 미디어 서버가 영상을 받기 시작하면 READY → LIVE. */
-    fun confirmPublishStarted(): Boolean = when (status) {
-        BroadcastStatus.READY -> true.also { status = BroadcastStatus.LIVE }
+    /** 송출 시작 확인: 미디어 서버가 영상을 받기 시작하면 READY → LIVE. [now]를 시작 시각으로 남긴다. */
+    fun confirmPublishStarted(now: LocalDateTime): Boolean = when (status) {
+        BroadcastStatus.READY -> true.also {
+            status = BroadcastStatus.LIVE
+            startedAt = now
+        }
         BroadcastStatus.LIVE -> false
         BroadcastStatus.ENDED -> throw ConflictException("끝난 방송은 다시 송출할 수 없습니다.")
     }

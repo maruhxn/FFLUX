@@ -3,8 +3,12 @@ package com.maruhxn.fflux.broadcast
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import java.time.Duration
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /** LIVE 방송 시청: 상세가 알려 주는 WHEP·HLS 주소와 MediaMTX `read` 인증. */
 class WatchTest : BroadcastFlowTest() {
@@ -26,6 +30,21 @@ class WatchTest : BroadcastFlowTest() {
         available("rec/$id")
 
         assertEquals("/media/rec/$id/whep", detail(id, null).body!!["whepUrl"])
+    }
+
+    @Test
+    fun `상세는 송출이 시작돼 LIVE가 된 시각을 시작 시각으로 알려 준다`() {
+        val id = register(streamer)
+        auth("publish", "live/$id", tokenOf(issue(id, streamer)))
+        val ready = detail(id, null).body!!
+        assertTrue("startedAt" in ready)
+        assertNull(ready["startedAt"])
+
+        clock.advance(Duration.ofMinutes(10))
+        val liveAt = LocalDateTime.now(clock).truncatedTo(ChronoUnit.MICROS)
+        available("live/$id")
+
+        assertEquals(liveAt, LocalDateTime.parse(detail(id, null).body!!["startedAt"] as String))
     }
 
     @Test

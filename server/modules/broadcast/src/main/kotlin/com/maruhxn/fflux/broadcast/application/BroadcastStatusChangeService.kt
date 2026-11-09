@@ -53,7 +53,7 @@ class BroadcastStatusChangeService(
         val broadcast = broadcastRepository.findForUpdateByMediaPath(mediaPath)
             ?: return log.warn("송출 시작 확인: 방송이 없거나 삭제됨 path={}", mediaPath)
         try {
-            if (broadcast.confirmPublishStarted()) {
+            if (broadcast.confirmPublishStarted(LocalDateTime.now(clock))) {
                 log.info("방송 LIVE 전환: id={}", broadcast.id)
                 publishStatusChanged(broadcast)
             }

@@ -121,6 +121,7 @@ class BroadcastService(
         description = description?.value,
         status = status,
         createdAt = createdAt,
+        startedAt = startedAt,
         viewerCount = viewerCount,
     )
 

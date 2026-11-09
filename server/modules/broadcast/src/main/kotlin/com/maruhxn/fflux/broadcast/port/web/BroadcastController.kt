@@ -104,6 +104,8 @@ data class BroadcastDetailResponse(
     val description: String?,
     val status: BroadcastStatus,
     val createdAt: LocalDateTime,
+    /** LIVE가 된 시각(방송 경과 시간의 기준). LIVE가 된 적 없으면 null. */
+    val startedAt: LocalDateTime?,
     val whepUrl: String?,
     val hlsUrl: String?,
     /** LIVE 방송의 지금 시청자 수. LIVE가 아니면 null. */
@@ -119,6 +121,7 @@ data class BroadcastDetailResponse(
                 description = description,
                 status = status,
                 createdAt = createdAt,
+                startedAt = startedAt,
                 whepUrl = result.watchPath?.let(MediaUrls::whep),
                 hlsUrl = result.watchPath?.let(MediaUrls::hls),
                 viewerCount = viewerCount,
