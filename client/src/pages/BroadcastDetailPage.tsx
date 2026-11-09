@@ -6,6 +6,7 @@ import { useBroadcastEvents } from '../broadcast/events'
 import { EndBroadcastButton } from '../components/EndBroadcastButton'
 import { LivePlayer } from '../components/LivePlayer'
 import { StatusBadge } from '../components/StatusBadge'
+import { StreamingTime } from '../components/StreamingTime'
 
 const PLAYER_PLACEHOLDER: Record<BroadcastStatus, string> = {
   READY: '방송 대기 중',
@@ -54,6 +55,11 @@ export function BroadcastDetailPage() {
           <span className="text-sm text-neutral-400">{broadcast.streamerNickname}</span>
           {broadcast.status === 'LIVE' && broadcast.viewerCount !== null && (
             <span className="text-sm text-neutral-300">{formatViewerCount(broadcast.viewerCount)} 시청 중</span>
+          )}
+          {broadcast.status === 'LIVE' && broadcast.startedAt && (
+            <span className="text-sm text-neutral-300 tabular-nums">
+              <StreamingTime startedAt={broadcast.startedAt} />
+            </span>
           )}
           <span className="text-xs text-neutral-500">{formatDateTime(broadcast.createdAt)}</span>
         </div>

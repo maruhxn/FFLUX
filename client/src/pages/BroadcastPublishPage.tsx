@@ -13,6 +13,7 @@ import {
 } from '../broadcast/publishSession'
 import { EndBroadcastButton } from '../components/EndBroadcastButton'
 import { StatusBadge } from '../components/StatusBadge'
+import { StreamingTime } from '../components/StreamingTime'
 
 /** 송출(`/broadcasts/:id/publish`). PC는 화면 공유, 모바일은 카메라로 보낸다. 스트리머만, READY 방송에서 시작한다. */
 export function BroadcastPublishPage() {
@@ -231,9 +232,20 @@ function PublishingView({ broadcast, session }: { broadcast: Broadcast; session:
       <Title broadcast={current} status={current.status} />
       <Preview stream={session.stream} />
       <p className="text-sm text-neutral-300">
-        {current.status === 'LIVE'
-          ? `방송 중입니다. ${formatViewerCount(current.viewerCount ?? 0)} 시청 중.`
-          : '송출을 연결했습니다. 미디어 서버가 영상을 받으면 방송이 시작됩니다.'} 다른
+        {current.status === 'LIVE' ? (
+          <>
+            방송 중입니다. {formatViewerCount(current.viewerCount ?? 0)} 시청 중
+            {current.startedAt && (
+              <>
+                , <StreamingTime startedAt={current.startedAt} />
+              </>
+            )}
+            .
+          </>
+        ) : (
+          '송출을 연결했습니다. 미디어 서버가 영상을 받으면 방송이 시작됩니다.'
+        )}{' '}
+        다른
         페이지로 옮겨도 송출은 이어집니다. 소리: {session.audioLabel}
       </p>
       <div className="flex flex-wrap gap-2">
