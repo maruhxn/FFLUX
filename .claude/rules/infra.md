@@ -27,4 +27,4 @@ paths:
 - VM은 GCP 신규 크레딧(90일)으로 운영하고, 평가가 끝날 때까지 켜 둔다.
 - TURN 없이 운영한다. 실기기에서 연결이 실패할 때만 coturn을 추가한다.
 - 비밀값은 VM `.env`로만 주입한다. 새 변수는 `.env.example`에 추가한다.
-- 배포는 VM에서 `git pull && docker compose up -d --build`. GitHub Actions 자동 배포는 마무리 단계에서 붙인다.
+- 배포는 GitHub Actions(`.github/workflows/ci.yml`)가 `main` 푸시 때 한다: 검사 통과 + 서버·인프라·workflow 변경이면 Spring 이미지를 GHCR에 올리고 VM(`/opt/fflux`)을 그 커밋으로 체크아웃해 `docker compose pull app && docker compose up -d`. VM에서 이미지를 빌드하지 않는다. GCP 인증은 Workload Identity Federation(장기 키 금지), VM 접속은 IAP 터널 SSH(OS Login).

@@ -1,11 +1,11 @@
 # 배포 (GCP VM)
 
-프론트는 Vercel(`https://fflux.kro.kr`), API·미디어는 GCP VM(`https://api.fflux.kro.kr`)이다. VM의 운영 스택은 저장소 루트의 `compose.yml` 하나다. VM에서 `git pull && docker compose up -d --build`로 배포한다.
+프론트는 Vercel(`https://fflux.kro.kr`), API·미디어는 GCP VM(`https://api.fflux.kro.kr`)이다. VM의 운영 스택은 저장소 루트의 `compose.yml` 하나이고, VM의 `/opt/fflux`에 있다. 배포는 `main` 푸시 때 GitHub Actions가 자동으로 한다(아래 6절).
 
 | 서비스 | 이미지 | 호스트 포트 |
 |---|---|---|
 | `caddy` | `caddy:2`, 설정 `infra/Caddyfile.prod` | 80, 443 |
-| `app` | `server/Dockerfile`(Spring bootJar, JRE 25) | 없음 |
+| `app` | `ghcr.io/maruhxn/fflux-app`(Actions가 `server/Dockerfile`로 빌드) | 없음 |
 | `mysql` | `mysql:8.4` | 없음 |
 | `mediamtx` | `bluenviron/mediamtx:latest-ffmpeg`, 설정은 로컬과 같은 `infra/mediamtx.yml`·`infra/hooks` | 8189 UDP/TCP |
 
@@ -60,19 +60,21 @@ gcloud compute firewall-rules create fflux-web \
 ```bash
 gcloud compute ssh fflux --zone=asia-northeast3-a --tunnel-through-iap
 
-# 스왑 2GB(e2-small 메모리 2GB에서 Gradle·npm 빌드를 버티게)
+# 스왑 2GB(e2-small 메모리 2GB의 여유분)
 sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
 # Docker Engine + Compose 플러그인
 curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker $USER && newgrp docker
 
+# 저장소는 계정과 상관없는 /opt/fflux에 둔다(OS Login이라 사람·배포용 서비스 계정의 사용자 이름이 다르다).
 sudo apt-get install -y git
-git clone https://github.com/maruhxn/FFLUX.git fflux && cd fflux
+sudo git clone https://github.com/maruhxn/FFLUX.git /opt/fflux
+sudo git config --system --add safe.directory /opt/fflux
+cd /opt/fflux
 
-cp .env.example .env
-vi .env   # 아래 값을 채운다
+sudo cp .env.example .env && sudo chmod 600 .env
+sudo vi .env   # 아래 값을 채운다
 ```
 
 `.env`에서 VM이 쓰는 키(나머지 로컬용 키는 무시된다):
@@ -89,14 +91,26 @@ vi .env   # 아래 값을 채운다
 
 `.env`는 VM에만 두고 저장소에 올리지 않는다. 세션 쿠키 `Secure`는 `compose.yml`이 켠다.
 
-## 4. 배포
+## 4. 손 배포와 되돌리기
+
+평소에는 6절의 자동 배포를 쓴다. 처음 띄울 때나 Actions가 안 될 때만 VM에서 직접 한다.
 
 ```bash
-cd ~/fflux
-git pull && docker compose up -d --build
-docker compose ps                      # 4개 모두 Up, mysql은 healthy
-docker compose logs -f app caddy       # Flyway 마이그레이션, 인증서 발급 확인
+cd /opt/fflux
+# 자동 배포가 VM 저장소를 커밋 단위로 체크아웃하므로(브랜치가 아니다) pull 대신 fetch + checkout을 쓴다.
+# docker compose pull은 MediaMTX·Caddy 이미지도 새로 받는다(자동 배포는 app만 받는다).
+sudo git fetch origin && sudo git checkout --detach origin/main
+sudo docker compose pull && sudo docker compose up -d
+sudo docker compose ps                      # 4개 모두 Up, mysql은 healthy
+sudo docker compose logs -f app caddy       # Flyway 마이그레이션, 인증서 발급 확인
+
+# 되돌리기: 이전 커밋으로 체크아웃하고 그 커밋의 이미지(태그 = 커밋 SHA)를 띄운다.
+sudo git checkout --detach <커밋 SHA>
+sudo APP_TAG=<커밋 SHA> sh -c 'docker compose pull app && docker compose up -d'
+# 다음 자동 배포가 다시 최신 커밋으로 맞춘다.
 ```
+
+Flyway 마이그레이션은 되돌리지 않는다. 스키마를 바꾼 커밋 이전으로 되돌릴 때는 주의한다.
 
 MySQL 데이터, 녹화, 인증서는 named volume(`mysql_data`, `recordings`, `vod`, `caddy_data`)에 남는다. `docker compose down -v`는 이것까지 지우니 쓰지 않는다.
 
@@ -126,3 +140,47 @@ curl -s -D - -o /dev/null -X POST https://api.fflux.kro.kr/media/live/0/whep \
 - Root Directory는 `client`, 빌드는 Vite 기본값(`npm run build`, 출력 `dist`)이다.
 - API 주소는 `client/.env.production`의 `VITE_API_ORIGIN=https://api.fflux.kro.kr`로 빌드에 들어간다. Vercel 환경변수로 따로 넣지 않아도 된다.
 - `client/vercel.json`이 모든 경로를 `index.html`로 돌려 SPA 라우팅(`/broadcasts/1` 새로고침 등)을 받는다.
+
+## 6. 자동 배포 (GitHub Actions)
+
+`.github/workflows/ci.yml`이 한다.
+
+| 작업 | 언제 | 내용 |
+|---|---|---|
+| `server` | `main` 푸시, PR | `./gradlew test`(Testcontainers MySQL) |
+| `client` | `main` 푸시, PR | `npm ci`, oxlint, Vitest, `npm run build`(타입체크 포함) |
+| `deploy` | `main` 푸시 + 위 둘 통과 + `server/**`·`compose.yml`·`infra/**`·workflow 변경 | 이미지를 GHCR(`ghcr.io/maruhxn/fflux-app:<SHA>`, `latest`)에 올리고, IAP 터널 SSH로 VM 저장소를 그 커밋으로 체크아웃한 뒤 `docker compose pull app`, `up -d`. 뒤이어 5분 안에 `https://api.fflux.kro.kr/api/broadcasts?status=LIVE`가 200인지 확인 |
+
+배포는 하나씩만 돈다(`concurrency: deploy`). 진행 상황은 저장소 Actions 탭에서 본다.
+
+### 처음 한 번: GCP와 GitHub 설정
+
+```bash
+P=fflux-maruhxn
+N=$(gcloud projects describe $P --format='value(projectNumber)')
+SA=github-deploy@$P.iam.gserviceaccount.com
+gcloud services enable iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com
+
+# Workload Identity Federation: 이 저장소의 main 푸시만 토큰을 받는다
+gcloud iam workload-identity-pools create github --location=global
+gcloud iam workload-identity-pools providers create-oidc fflux-repo --location=global --workload-identity-pool=github \
+  --issuer-uri=https://token.actions.githubusercontent.com \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref" \
+  --attribute-condition="assertion.repository=='maruhxn/FFLUX' && assertion.ref=='refs/heads/main'"
+
+# 배포용 서비스 계정과 최소 권한: IAP 터널, 조회, 이 VM의 OS Login(sudo), VM 서비스 계정 사용
+gcloud iam service-accounts create github-deploy
+gcloud iam service-accounts add-iam-policy-binding $SA --role=roles/iam.workloadIdentityUser \
+  --member="principalSet://iam.googleapis.com/projects/$N/locations/global/workloadIdentityPools/github/attribute.repository/maruhxn/FFLUX"
+gcloud projects add-iam-policy-binding $P --member=serviceAccount:$SA --role=roles/iap.tunnelResourceAccessor --condition=None
+gcloud projects add-iam-policy-binding $P --member=serviceAccount:$SA --role=roles/compute.viewer --condition=None
+gcloud compute instances add-iam-policy-binding fflux --zone=asia-northeast3-a --member=serviceAccount:$SA --role=roles/compute.osAdminLogin
+gcloud iam service-accounts add-iam-policy-binding $N-compute@developer.gserviceaccount.com --member=serviceAccount:$SA --role=roles/iam.serviceAccountUser
+gcloud compute instances add-metadata fflux --zone=asia-northeast3-a --metadata=enable-oslogin=TRUE
+
+# GitHub 저장소 변수(비밀값 아님)
+gh variable set GCP_WORKLOAD_IDENTITY_PROVIDER --body "projects/$N/locations/global/workloadIdentityPools/github/providers/fflux-repo"
+gh variable set GCP_DEPLOY_SERVICE_ACCOUNT --body "$SA"
+```
+
+GHCR 패키지 `fflux-app`은 공개(public)로 둔다. VM이 로그인 없이 이미지를 받는다. 패키지는 첫 이미지 푸시 때 비공개로 생기므로, 첫 배포가 `docker compose pull`에서 실패하면 GitHub 패키지 설정(Package settings → Change visibility)에서 Public으로 바꾸고 재실행한다.
