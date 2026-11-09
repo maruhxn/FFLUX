@@ -1,14 +1,19 @@
-// 송출 준비물. PC는 화면 공유 영상과, 화면 소리·마이크를 Web Audio로 섞은 오디오 트랙 하나. 모바일은 카메라와 마이크.
+// 송출 준비물. PC는 화면 공유 영상(캠을 켜면 우하단에 PiP로 합성)과, 화면 소리·마이크를 Web Audio로 섞은 오디오 트랙 하나.
+// 모바일은 카메라와 마이크.
+import { composePip, type Pip } from './pip'
 
 export type Facing = 'user' | 'environment'
 
 /**
- * 송출할 [stream]과 그 원본들. 끝낼 때 [sources]의 트랙을 모두 멈춘다.
+ * 송출할 [stream]과 그 원본들. 끝낼 때 [sources]의 트랙을 모두 멈추고 [pip] 합성도 멈춘다.
+ * [sourceVideo]는 끝나면 송출을 끝내는 원본 영상 트랙이다(화면 공유의 "공유 중지", 카메라 회수). 캠 PiP면 합성 트랙이 아니라 화면 트랙이다.
  * [facing]은 카메라 송출일 때 지금 쓰는 카메라(전면/후면)이고, 화면 공유면 null이다.
  */
 export type Capture = {
   stream: MediaStream
   sources: MediaStream[]
+  sourceVideo: MediaStreamTrack
+  pip: Pip | null
   audioContext: AudioContext | null
   audioLabel: string
   facing: Facing | null
@@ -43,6 +48,8 @@ export async function captureScreen(): Promise<Capture> {
   return {
     stream: new MediaStream(tracks),
     sources: [display, ...(mic ? [mic] : [])],
+    sourceVideo: display.getVideoTracks()[0],
+    pip: null,
     audioContext,
     audioLabel: labels.length > 0 ? labels.join(' + ') : '없음(영상만)',
     facing: null,
@@ -62,7 +69,15 @@ export async function captureCamera(facing: Facing): Promise<Capture> {
     video: cameraVideo(facing),
     audio: { echoCancellation: true, noiseSuppression: true },
   })
-  return { stream, sources: [stream], audioContext: null, audioLabel: '마이크', facing }
+  return {
+    stream,
+    sources: [stream],
+    sourceVideo: stream.getVideoTracks()[0],
+    pip: null,
+    audioContext: null,
+    audioLabel: '마이크',
+    facing,
+  }
 }
 
 /**
@@ -82,14 +97,33 @@ export async function flipCamera(capture: Capture): Promise<Capture> {
       .then((s) => [next, s] as const)
       .catch(() => open(current).then((s) => [current, s] as const))
     const stream = new MediaStream([...video.getVideoTracks(), ...audio])
-    return { ...capture, stream, sources: [stream], facing }
+    return { ...capture, stream, sources: [stream], sourceVideo: video.getVideoTracks()[0], facing }
   } catch (e) {
     audio.forEach((t) => t.stop())
     throw e
   }
 }
 
+/** PC 송출에 겹칠 캠. [deviceId]가 없으면 기본 캠을 연다. PiP는 작게 그리므로 해상도는 낮게 받는다. */
+export function openCam(deviceId: string | null): Promise<MediaStream> {
+  return navigator.mediaDevices.getUserMedia({
+    video: { ...(deviceId ? { deviceId: { exact: deviceId } } : {}), width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 30 } },
+  })
+}
+
+/** 화면 공유 준비물에 [cam]을 PiP로 겹친 준비물. 정리하면 화면·마이크·캠과 합성을 모두 멈춘다. */
+export function withPip(screen: Capture, cam: MediaStream): Capture {
+  const pip = composePip(screen.sourceVideo, cam.getVideoTracks()[0])
+  return {
+    ...screen,
+    stream: new MediaStream([pip.track, ...screen.stream.getAudioTracks()]),
+    sources: [...screen.sources, cam],
+    pip,
+  }
+}
+
 export function releaseCapture(capture: Capture) {
+  capture.pip?.stop()
   capture.sources.forEach((s) => s.getTracks().forEach((t) => t.stop()))
   void capture.audioContext?.close()
 }

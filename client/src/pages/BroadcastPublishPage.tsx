@@ -3,7 +3,18 @@ import { Link, Navigate, useParams } from 'react-router'
 import { useMe } from '../auth/auth'
 import { formatViewerCount, useBroadcast, useIssuePublishToken, type Broadcast } from '../broadcast/broadcast'
 import { useBroadcastEvents } from '../broadcast/events'
-import { captureCamera, captureScreen, flipCamera, publishesCamera, releaseCapture, type Capture, type Facing } from '../broadcast/capture'
+import {
+  captureCamera,
+  captureScreen,
+  flipCamera,
+  openCam,
+  publishesCamera,
+  releaseCapture,
+  withPip,
+  type Capture,
+  type Facing,
+} from '../broadcast/capture'
+import { supportsPip } from '../broadcast/pip'
 import {
   flipPublishingCamera,
   startPublish,
@@ -59,12 +70,23 @@ function PublishView({ broadcast }: { broadcast: Broadcast }) {
   return <PrepareView broadcast={broadcast} />
 }
 
-/** 녹화 여부 → 화면(카메라) 선택·미리보기 → 송출 시작. 토큰은 약 1분만 유효하므로 화면을 고른 뒤 송출 직전에 받는다. */
+/**
+ * 녹화 여부 → 화면(카메라) 선택·미리보기 → 송출 시작. 토큰은 약 1분만 유효하므로 화면을 고른 뒤 송출 직전에 받는다.
+ * PC는 캠을 켜면 화면 우하단에 캠을 겹친 합성 영상을 미리 보고 그대로 송출한다.
+ */
 function PrepareView({ broadcast }: { broadcast: Broadcast }) {
   const [camera] = useState(publishesCamera)
+  const [pipAvailable] = useState(() => !camera && supportsPip())
   const [step, setStep] = useState<Step>('record')
   const [record, setRecord] = useState(true)
   const [capture, setCapture] = useState<Capture | null>(null)
+  const [cam, setCam] = useState<MediaStream | null>(null)
+  const [cams, setCams] = useState<MediaDeviceInfo[]>([])
+  // 화면과 캠이 모두 있으면 둘을 합성한 준비물.
+  const [pipCapture, setPipCapture] = useState<Capture | null>(null)
+  // 캠 열기 요청 차례. 열리는 사이에 끄거나 다른 캠을 고르면 늦게 열린 캠은 버린다.
+  const camRequest = useRef(0)
+  const outgoing = pipCapture ?? capture
   const [message, setMessage] = useState<string | null>(null)
   const [starting, setStarting] = useState(false)
   // 송출을 시작하면 준비물의 정리는 송출 세션이 맡는다.
@@ -80,6 +102,26 @@ function PrepareView({ broadcast }: { broadcast: Broadcast }) {
   }, [capture])
 
   useEffect(() => {
+    if (!cam) return
+    return () => {
+      if (!handedOff.current) cam.getTracks().forEach((t) => t.stop())
+    }
+  }, [cam])
+
+  // 화면이나 캠이 바뀌면 다시 합성한다. 원본 화면·캠은 위의 정리가 맡고, 여기서는 합성만 멈춘다.
+  useEffect(() => {
+    if (!capture || !cam) return
+    const next = withPip(capture, cam)
+    // 합성 Worker(외부 자원)를 만들고 정리하는 동기화라 이펙트에서 상태를 바꾼다.
+    // oxlint-disable-next-line react/set-state-in-effect
+    setPipCapture(next)
+    return () => {
+      if (!handedOff.current) next.pip?.stop()
+      setPipCapture(null)
+    }
+  }, [capture, cam])
+
+  useEffect(() => {
     mounted.current = true
     return () => {
       mounted.current = false
@@ -88,7 +130,7 @@ function PrepareView({ broadcast }: { broadcast: Broadcast }) {
 
   function adopt(next: Capture) {
     // 송출 전에 "공유 중지"를 누르거나 카메라가 꺼지면 준비물만 버린다.
-    next.stream.getVideoTracks()[0].addEventListener('ended', () => setCapture((c) => (c === next ? null : c)))
+    next.sourceVideo.addEventListener('ended', () => setCapture((c) => (c === next ? null : c)))
     setCapture(next)
   }
 
@@ -99,6 +141,35 @@ function PrepareView({ broadcast }: { broadcast: Broadcast }) {
     } catch {
       setMessage(camera ? '카메라와 마이크를 쓸 수 없습니다. 브라우저 권한을 확인하세요.' : '화면 공유를 시작하지 못했습니다.')
     }
+  }
+
+  /** 캠을 켜거나 다른 캠으로 바꾼다. 못 열면 화면만으로 송출하게 둔다. */
+  async function switchCam(deviceId: string | null) {
+    setMessage(null)
+    const request = ++camRequest.current
+    try {
+      const next = await openCam(deviceId)
+      if (request !== camRequest.current || !mounted.current) {
+        next.getTracks().forEach((t) => t.stop())
+        return
+      }
+      // 송출 전에 캠이 끊기면(뽑힘, 권한 회수) 끈 것으로 본다.
+      next.getVideoTracks()[0].addEventListener('ended', () => {
+        setCam((c) => (c === next ? null : c))
+        setMessage('캠 연결이 끊겼습니다. 화면만으로 송출할 수 있습니다.')
+      })
+      setCam(next)
+      setCams((await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput'))
+    } catch {
+      if (request !== camRequest.current) return
+      setCam(null)
+      setMessage('캠을 쓸 수 없습니다(권한 거부 또는 캠 없음). 화면만으로 송출할 수 있습니다.')
+    }
+  }
+
+  function turnOffCam() {
+    camRequest.current++
+    setCam(null)
   }
 
   async function flip() {
@@ -115,20 +186,25 @@ function PrepareView({ broadcast }: { broadcast: Broadcast }) {
   }
 
   async function start() {
-    if (!capture) return
+    if (!outgoing) return
     setMessage(null)
     setStarting(true)
     try {
       const { token, whipUrl } = await issueToken.mutateAsync(record)
       // 송출 세션이 생기는 순간 이 화면이 내려가므로, 정리 책임을 먼저 넘겨 두고 실패하면 되찾는다.
       handedOff.current = true
-      await startPublish(broadcast.id, capture, whipUrl, token)
+      await startPublish(broadcast.id, outgoing, whipUrl, token)
     } catch (e) {
       handedOff.current = false
       // 연결하는 사이에 화면을 떠났으면 정리할 곳이 여기뿐이다.
       if (!mounted.current) {
-        releaseCapture(capture)
+        releaseCapture(outgoing)
         return
+      }
+      // 연결하는 사이에 "공유 중지"로 화면이 버려졌으면 남은 마이크·캠·합성도 여기서 정리한다.
+      if (outgoing.sourceVideo.readyState === 'ended') {
+        releaseCapture(outgoing)
+        turnOffCam()
       }
       setMessage(e instanceof Error ? e.message : '송출을 시작하지 못했습니다.')
     } finally {
@@ -167,7 +243,7 @@ function PrepareView({ broadcast }: { broadcast: Broadcast }) {
         </div>
       )}
 
-      <Preview stream={capture?.stream ?? null} />
+      <Preview stream={outgoing?.stream ?? null} />
 
       {step === 'capture' && (
         <div className="space-y-3">
@@ -198,6 +274,33 @@ function PrepareView({ broadcast }: { broadcast: Broadcast }) {
               송출 시작
             </button>
           </div>
+          {pipAvailable && (
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={cam !== null}
+                  disabled={!capture || starting}
+                  onChange={(e) => (e.target.checked ? void switchCam(null) : turnOffCam())}
+                />
+                캠 같이 보내기 (화면 우하단{capture ? '' : ', 화면을 먼저 고르세요'})
+              </label>
+              {cam && cams.length > 1 && (
+                <select
+                  value={cam.getVideoTracks()[0]?.getSettings().deviceId ?? ''}
+                  disabled={starting}
+                  onChange={(e) => void switchCam(e.target.value)}
+                  className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1"
+                >
+                  {cams.map((d, i) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || `캠 ${i + 1}`}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
           {capture && <p className="text-xs text-neutral-500">소리: {capture.audioLabel}</p>}
         </div>
       )}

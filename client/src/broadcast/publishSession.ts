@@ -95,7 +95,7 @@ async function release() {
  * 카메라는 앱 전환 때 꺼질 수 있어 스트리머가 직접 끈 것이 아니므로 송출 끊김으로 안내한다.
  */
 function watchVideoEnded(broadcastId: number, capture: Capture) {
-  const video = capture.stream.getVideoTracks()[0]
+  const video = capture.sourceVideo
   const onEnded = () => {
     if (active?.capture !== capture) return
     if (capture.facing) lostBroadcastId = broadcastId
