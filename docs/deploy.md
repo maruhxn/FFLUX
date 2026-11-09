@@ -143,13 +143,14 @@ curl -s -D - -o /dev/null -X POST https://api.fflux.kro.kr/media/live/0/whep \
 
 ## 6. 자동 배포 (GitHub Actions)
 
-`.github/workflows/ci.yml`이 한다.
+CI(`.github/workflows/ci.yml`)와 CD(`.github/workflows/cd.yml`)로 나뉜다. CD는 `main`의 CI가 성공해야 돈다.
 
 | 작업 | 언제 | 내용 |
 |---|---|---|
-| `server` | `main` 푸시, PR | `./gradlew test`(Testcontainers MySQL) |
-| `client` | `main` 푸시, PR | `npm ci`, oxlint, Vitest, `npm run build`(타입체크 포함) |
-| `deploy` | `main` 푸시 + 위 둘 통과 + `server/**`·`compose.yml`·`infra/**`·workflow 변경 | 이미지를 GHCR(`ghcr.io/maruhxn/fflux-app:<SHA>`, `latest`)에 올리고, IAP 터널 SSH로 VM 저장소를 그 커밋으로 체크아웃한 뒤 `docker compose pull app`, `up -d`. 뒤이어 5분 안에 `https://api.fflux.kro.kr/api/broadcasts?status=LIVE`가 200인지 확인 |
+| CI `server` | `main` 푸시, PR | `./gradlew test`(Testcontainers MySQL) |
+| CI `client` | `main` 푸시, PR | `npm ci`, oxlint, Vitest, `npm run build`(타입체크 포함) |
+| CD `changes` | `main`의 CI 성공 | 마지막으로 성공한 CD의 커밋과 비교해 `server/**`·`compose.yml`·`infra/**`·`cd.yml`이 바뀌었는지 본다(첫 CD는 무조건 배포) |
+| CD `deploy` | 위에서 바뀌었을 때 | 이미지를 GHCR(`ghcr.io/maruhxn/fflux-app:<SHA>`, `latest`)에 올리고, IAP 터널 SSH로 VM 저장소를 그 커밋으로 체크아웃한 뒤 `docker compose pull app`, `up -d`. 뒤이어 5분 안에 `https://api.fflux.kro.kr/api/broadcasts?status=LIVE`가 200인지 확인 |
 
 배포는 하나씩만 돈다(`concurrency: deploy`). 진행 상황은 저장소 Actions 탭에서 본다.
 

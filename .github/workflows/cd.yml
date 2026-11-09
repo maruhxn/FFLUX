@@ -1,0 +1,104 @@
+# CD: main의 CI가 성공하면, 마지막으로 성공한 CD 이후 서버·인프라가 바뀐 경우에만 VM(api.fflux.kro.kr)에 배포한다.
+# Spring 이미지를 GHCR에 올리고 VM은 받아서 띄우기만 한다. 프론트(fflux.kro.kr)는 Vercel이 따로 배포한다.
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+# 배포는 겹치지 않게 하나씩. 진행 중인 배포는 취소하지 않는다.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  SHA: ${{ github.event.workflow_run.head_sha }}
+
+jobs:
+  changes:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      deploy: ${{ steps.first.outputs.deploy || steps.filter.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SHA }}
+          fetch-depth: 0
+      # 비교 기준: 마지막으로 성공한 CD의 커밋. 그 사이 여러 번 푸시됐어도 빠짐없이 본다.
+      - id: base
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "sha=$(gh run list --workflow cd.yml --branch main --status success --limit 1 --json headSha --jq '.[0].headSha // empty')" >> "$GITHUB_OUTPUT"
+      - id: first
+        if: steps.base.outputs.sha == ''
+        run: echo "deploy=true" >> "$GITHUB_OUTPUT"
+      - uses: dorny/paths-filter@v4
+        if: steps.base.outputs.sha != ''
+        id: filter
+        with:
+          base: ${{ steps.base.outputs.sha }}
+          ref: ${{ env.SHA }}
+          filters: |
+            deploy:
+              - 'server/**'
+              - 'compose.yml'
+              - 'infra/**'
+              - '.github/workflows/cd.yml'
+
+  deploy:
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    env:
+      IMAGE: ghcr.io/maruhxn/fflux-app
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SHA }}
+
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: server
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ env.SHA }}
+
+      # 장기 키 없이 Workload Identity Federation으로 배포용 서비스 계정을 빌린다. VM은 IAP 터널로만 접속한다.
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3
+      # VM 저장소를 이 커밋에 맞춰(compose·infra와 앱 이미지가 같은 커밋) 그 커밋의 이미지로 다시 띄운다.
+      - name: VM에 배포
+        run: |
+          gcloud compute ssh fflux --project=fflux-maruhxn --zone=asia-northeast3-a --tunnel-through-iap --quiet \
+            --command="cd /opt/fflux && sudo git fetch -q origin && sudo git checkout -q --detach $SHA && sudo APP_TAG=$SHA sh -c 'docker compose pull app && docker compose up -d' && sudo docker image prune -f"
+
+      - name: 배포 확인
+        run: |
+          for _ in $(seq 1 30); do
+            if curl -fsS --max-time 10 -o /dev/null 'https://api.fflux.kro.kr/api/broadcasts?status=LIVE'; then echo "API 정상"; exit 0; fi
+            sleep 10
+          done
+          echo "배포 후 5분 안에 API가 응답하지 않았다"; exit 1

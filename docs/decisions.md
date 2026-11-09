@@ -21,7 +21,7 @@
   - 터널은 HTTP만 전달하므로 WHIP/WHEP 시그널링과 HLS는 터널로, WebRTC 미디어는 같은 와이파이에서 PC 내부 IP(`webrtcAdditionalHosts`)로 직접 연결한다.
   - 로컬에서는 같은 와이파이의 WebRTC 송출·시청과 LTE의 HLS 시청까지만 확인한다. LTE의 WebRTC 시청과 TURN 필요 여부는 VM 배포 단계에서 확인한다.
 - VM은 PC 송출·시청·종료가 갖춰진 뒤 처음 올려 LTE를 확인한다. 크레딧으로 운영하므로 확인 이후에는 평가가 끝날 때까지 켜 둔다.
-- 배포는 GitHub Actions(`.github/workflows/ci.yml`)가 한다. `main` 푸시마다 서버 테스트와 클라이언트 검사를 돌리고, 통과했고 서버·인프라(`server/**`, `compose.yml`, `infra/**`, workflow 자신)가 바뀌었으면 VM에 배포한다. 프론트는 Vercel이 GitHub 연동으로 배포한다.
+- 배포는 GitHub Actions가 한다. CI(`.github/workflows/ci.yml`)와 CD(`cd.yml`)를 나눈다. CI는 `main` 푸시와 PR마다 서버 테스트와 클라이언트 검사를 돌리고, CD는 `main`의 CI가 성공하면 이어서 돌아 마지막으로 성공한 CD 이후 서버·인프라(`server/**`, `compose.yml`, `infra/**`, `cd.yml`)가 바뀌었을 때만 VM에 배포한다. 프론트는 Vercel이 GitHub 연동으로 배포한다.
   - 처음엔 VM에서 `git pull && docker compose up -d --build`로 손 배포했고 CI/CD는 마무리 단계에 붙일 계획이었으나, 수정마다 손 배포가 번거로워 첫 마일스톤 QA(#12) 전으로 당겼다.
   - Spring 이미지는 VM(e2-small)이 아니라 Actions가 빌드해 GHCR(`ghcr.io/maruhxn/fflux-app`, 커밋 SHA·`latest` 태그)에 올리고, VM은 받아서 띄우기만 한다(`git pull && docker compose pull && docker compose up -d`). 2GB VM에서 Gradle 빌드를 하지 않아 배포가 빠르고 서비스 메모리를 빼앗지 않는다.
   - GCP 인증은 Workload Identity Federation이다(이 저장소의 `main`만 신뢰, GitHub에 장기 키 없음). 배포용 서비스 계정 `github-deploy`는 IAP 터널, 이 VM의 OS Login(sudo), 조회(`compute.viewer`, `gcloud compute ssh`가 인스턴스를 찾는 데 필요) 권한만 가진다. VM은 OS Login을 켜고 IAP 터널 SSH로만 접속하므로 방화벽은 그대로다.
