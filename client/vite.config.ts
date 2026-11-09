@@ -10,7 +10,8 @@ export default defineConfig({
     allowedHosts: ['.trycloudflare.com'],
     // 개발 중에도 same-origin으로 쓰도록 API는 bootRun(8080), 미디어(WHIP/WHEP/HLS)는 로컬 Caddy(infra, 8000)로 넘긴다.
     proxy: {
-      '/api': 'http://localhost:8080',
+      // 문자열 축약형은 Host를 8080으로 바꿔(changeOrigin) 서버 CORS가 브라우저 Origin(5173)을 교차 출처로 보고 403을 낸다.
+      '/api': { target: 'http://localhost:8080', changeOrigin: false },
       '/media': 'http://localhost:8000',
     },
   },
