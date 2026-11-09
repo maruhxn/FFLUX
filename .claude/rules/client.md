@@ -7,7 +7,7 @@ paths:
 
 - 스택: React Router(라우팅), TanStack Query(서버 상태), Tailwind CSS. 클라이언트 전역 상태 라이브러리는 쓰지 않는다.
 - 테스트: Vitest(`npm test`). 브라우저 미디어 API에 기대지 않는 순수 로직만 단위 테스트한다(예: `broadcast/pip.test.ts`). 미디어 동작은 브라우저에서 확인한다.
-- API는 same-origin 상대 경로(`/api/...`)로 호출하고 쿠키 세션에 기댄다. 토큰을 브라우저 저장소에 두지 않는다.
+- API·미디어는 `api/client.ts`의 `apiUrl`로 API 서버 주소(`VITE_API_ORIGIN`, 운영은 `https://api.fflux.kro.kr`)를 붙여 부른다. 로컬은 비워 두고 Vite 프록시로 같은 출처다. 쿠키 세션에 기대므로 `fetch`는 `credentials: 'include'`, SSE는 `withCredentials`로 연다. 토큰을 브라우저 저장소에 두지 않는다.
 - 화면은 반응형 하나다. 송출 화면만 PC용(화면 공유)과 모바일용(카메라)으로 나눈다.
 
 ## 송출

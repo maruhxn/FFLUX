@@ -8,8 +8,11 @@
   - 사양은 크레딧(약 ₩40만, 2027-02-06 만료) 안에서 스택이 돌아가는 최소로 잡았다. 처음엔 `e2-standard-2`(8GB)였으나 만료까지 크레딧의 3/4을 써서 `e2-small`(2GB)로 낮췄다. VM에서 Gradle·npm 빌드도 하므로 메모리 부족에 대비해 스왑 2GB를 둔다. 부족하면 `e2-medium`(4GB)으로 올린다.
   - 처음엔 AWS였으나 바꿨다. Oracle Cloud Always Free는 가입(카드 확인)이 되지 않았고, GCP의 상시 무료 VM(`e2-micro`, 1GB, 미국 리전)은 스택을 올리기에 작다. 그래서 신규 크레딧(90일)으로 서울 리전 VM을 쓴다. 마감(11/19)과 평가 기간이 크레딧 기간 안에 들어온다.
   - 외부 IP는 고정(예약) IP로 잡아 `webrtcAdditionalHosts`와 DNS에 쓴다. 방화벽은 VPC 방화벽 규칙으로 연다.
-- 도메인 `fflux.kro.kr` 하나 + Caddy 자동 HTTPS(`getDisplayMedia`/`getUserMedia`가 HTTPS에서만 동작). 모든 경로를 같은 호스트에 두므로 서브도메인은 쓰지 않는다. `kro.kr`은 Public Suffix List에 없어 Let's Encrypt 발급 한도를 다른 `kro.kr` 사용자와 공유한다. 발급이 막히면 Caddy의 ZeroSSL 폴백에 기댄다.
-- 같은 도메인(same-origin)으로 묶는다: 프론트 정적 파일, `/api` → Spring, `/media` → MediaMTX WHIP/WHEP/HLS.
+- 프론트는 Vercel(`fflux.kro.kr`), API·미디어는 VM(`api.fflux.kro.kr`, Caddy 자동 HTTPS)으로 나눈다. `getDisplayMedia`/`getUserMedia`가 HTTPS에서만 동작하므로 둘 다 HTTPS다.
+  - 처음엔 `fflux.kro.kr` 하나에 프론트·`/api`·`/media`를 모두 두는 same-origin이었으나, 프론트를 Vercel에 올리기로 해 나눴다. VM은 API·미디어만 맡아 빌드·메모리 부담도 준다.
+  - VM 경로: `/api` → Spring, `/media` → MediaMTX WHIP/WHEP/HLS, `/vod` → 녹화 MP4. 그 밖은 404.
+  - 프론트는 `VITE_API_ORIGIN`(`client/.env.production`)으로 API 주소를 받고, `fetch`는 `credentials: 'include'`, SSE는 `withCredentials`로 세션 쿠키를 싣는다. Spring은 CORS로 `CORS_ALLOWED_ORIGINS`(프론트 출처)만 쿠키 포함 요청을 허용한다. 미디어 요청은 쿠키 없이 송출 토큰만 쓰고, CORS는 MediaMTX 기본값(`*`)에 맡긴다.
+  - `kro.kr`은 Public Suffix List에 없어 `fflux.kro.kr`과 `api.fflux.kro.kr`이 같은 사이트(site)다. 그래서 `SameSite=Lax` 세션 쿠키가 그대로 실린다. 같은 이유로 Let's Encrypt 발급 한도를 다른 `kro.kr` 사용자와 공유한다. 발급이 막히면 Caddy의 ZeroSSL 폴백에 기댄다.
 - `/internal/*`은 Caddy에서 라우팅하지 않고, Spring 8080 포트는 호스트에 publish하지 않는다(네트워크 격리로 내부 API 보호).
 - WebRTC 미디어 포트 UDP/TCP 8189를 VM에서 직접 개방. TURN 없이 시작하고, VM 배포 후 LTE 확인에서 실패하면 coturn 추가.
 - 비밀값은 VM `.env`에만 두고 저장소에는 `.env.example`만 커밋.
@@ -162,7 +165,7 @@
 ## 8. 인증과 에러
 
 - Spring Security 세션 방식(HttpOnly 쿠키), Spring Session JDBC로 MySQL에 세션 저장. 세션 테이블은 Flyway가 만든다.
-- CSRF는 세션 쿠키 `SameSite=Lax`로 막고 Spring Security CSRF 토큰은 쓰지 않는다. 모든 경로가 같은 도메인이고, 최신 브라우저는 다른 사이트의 POST·PUT·DELETE에 Lax 쿠키를 싣지 않는다. 운영(HTTPS)에서는 쿠키에 `Secure`를 붙인다.
+- CSRF는 세션 쿠키 `SameSite=Lax`와 CORS 출처 허용 목록으로 막고 Spring Security CSRF 토큰은 쓰지 않는다. 최신 브라우저는 다른 사이트의 POST·PUT·DELETE에 Lax 쿠키를 싣지 않는다. 다만 `kro.kr`이 Public Suffix List에 없어 다른 `*.kro.kr` 사이트는 같은 사이트로 취급돼 Lax 쿠키가 실리므로, Spring CORS가 허용 목록 밖 `Origin`의 요청을 403으로 거절해 막는다. 운영(HTTPS)에서는 쿠키에 `Secure`를 붙인다.
 - 로그인 API: `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, 가입은 `POST /api/members`. 로그인 시 세션 ID를 바꾼다(세션 고정 방지).
 - 회원 필드: `username`(유니크, 영문 소문자·숫자·`_` 4~20자), `password`(BCrypt, 8~64자), `nickname`(2~12자). 이메일 인증·소셜 로그인 없음.
 - 테스트 계정 `streamer`, `viewer`를 앱 기동 시 시드한다. 비밀번호는 환경변수(`TEST_STREAMER_PASSWORD`, `TEST_VIEWER_PASSWORD`)로만 받고, 비어 있으면 그 계정은 만들지 않는다.

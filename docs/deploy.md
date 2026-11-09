@@ -1,15 +1,15 @@
 # 배포 (GCP VM)
 
-운영 스택은 저장소 루트의 `compose.yml` 하나다. VM에서 `git pull && docker compose up -d --build`로 배포한다.
+프론트는 Vercel(`https://fflux.kro.kr`), API·미디어는 GCP VM(`https://api.fflux.kro.kr`)이다. VM의 운영 스택은 저장소 루트의 `compose.yml` 하나다. VM에서 `git pull && docker compose up -d --build`로 배포한다.
 
 | 서비스 | 이미지 | 호스트 포트 |
 |---|---|---|
-| `caddy` | `client/Dockerfile`(클라이언트 빌드 결과 + `caddy:2`), 설정 `infra/Caddyfile.prod` | 80, 443 |
+| `caddy` | `caddy:2`, 설정 `infra/Caddyfile.prod` | 80, 443 |
 | `app` | `server/Dockerfile`(Spring bootJar, JRE 25) | 없음 |
 | `mysql` | `mysql:8.4` | 없음 |
 | `mediamtx` | `bluenviron/mediamtx:latest-ffmpeg`, 설정은 로컬과 같은 `infra/mediamtx.yml`·`infra/hooks` | 8189 UDP/TCP |
 
-Caddy는 `DOMAIN`으로 자동 HTTPS를 받고 `/api/*` → Spring, `/media/*` → MediaMTX, `/vod/*` → 녹화 MP4, 그 밖은 프론트(SPA)로 보낸다. `/internal/*`은 404이고 Spring 8080, MySQL, MediaMTX Control API(9997)는 Docker 내부망에만 있다.
+Caddy는 `DOMAIN`으로 자동 HTTPS를 받고 `/api/*` → Spring, `/media/*` → MediaMTX, `/vod/*` → 녹화 MP4로 보내고 그 밖(`/internal/*` 포함)은 404다. Spring 8080, MySQL, MediaMTX Control API(9997)는 Docker 내부망에만 있다.
 
 ## 1. VM 만들기 (처음 한 번)
 
@@ -53,7 +53,7 @@ gcloud compute firewall-rules create fflux-web \
 
 ## 2. DNS
 
-내도메인.한국에서 `fflux.kro.kr`의 A 레코드를 위 고정 IP로 둔다. `dig +short fflux.kro.kr`로 IP가 나오는지 확인한 뒤 스택을 띄운다(Caddy가 첫 기동에 인증서를 받는다).
+내도메인.한국에서 `api.fflux.kro.kr`의 A 레코드를 위 고정 IP로 둔다(`fflux.kro.kr`은 Vercel). `dig +short api.fflux.kro.kr`로 IP가 나오는지 확인한 뒤 스택을 띄운다(Caddy가 첫 기동에 인증서를 받는다).
 
 ## 3. VM 준비 (처음 한 번)
 
@@ -79,7 +79,8 @@ vi .env   # 아래 값을 채운다
 
 | 키 | 값 |
 |---|---|
-| `DOMAIN` | `fflux.kro.kr` |
+| `DOMAIN` | `api.fflux.kro.kr` |
+| `CORS_ALLOWED_ORIGINS` | `https://fflux.kro.kr`(프론트 출처) |
 | `WEBRTC_ADDITIONAL_HOSTS` | 고정 외부 IP |
 | `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD` | 새로 만든 긴 무작위 값(`openssl rand -base64 24`) |
 | `TEST_STREAMER_PASSWORD`, `TEST_VIEWER_PASSWORD` | 평가용 테스트 계정 비밀번호 |
@@ -101,11 +102,13 @@ MySQL 데이터, 녹화, 인증서는 named volume(`mysql_data`, `recordings`, `
 ## 5. 배포 후 확인
 
 ```bash
-curl -sI http://fflux.kro.kr/                            # 308 → https
-curl -s -o /dev/null -w '%{http_code}\n' https://fflux.kro.kr/                       # 200
-curl -s -o /dev/null -w '%{http_code}\n' 'https://fflux.kro.kr/api/broadcasts?status=LIVE'  # 200
-curl -s -o /dev/null -w '%{http_code}\n' -X POST https://fflux.kro.kr/internal/mediamtx/auth  # 404
-curl -s -D - -o /dev/null -X POST https://fflux.kro.kr/media/live/0/whep \
+curl -sI http://api.fflux.kro.kr/                        # 308 → https
+curl -s -o /dev/null -w '%{http_code}\n' 'https://api.fflux.kro.kr/api/broadcasts?status=LIVE'  # 200
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://api.fflux.kro.kr/internal/mediamtx/auth  # 404
+# 프론트 출처의 CORS: Access-Control-Allow-Origin이 https://fflux.kro.kr, Allow-Credentials가 true
+curl -s -D - -o /dev/null -X OPTIONS https://api.fflux.kro.kr/api/auth/login \
+  -H 'Origin: https://fflux.kro.kr' -H 'Access-Control-Request-Method: POST' | grep -i access-control
+curl -s -D - -o /dev/null -X POST https://api.fflux.kro.kr/media/live/0/whep \
   -H 'Content-Type: application/sdp' --data 'v=0' | grep -i www-authenticate     # 아무것도 안 나와야 한다
 ```
 
@@ -116,3 +119,9 @@ curl -s -D - -o /dev/null -X POST https://fflux.kro.kr/media/live/0/whep \
 3. 휴대폰 LTE에서 카메라 송출을 시작하고 PC에서 시청한다.
 
 LTE에서 WebRTC가 안 붙으면 coturn을 추가하고 `docs/decisions.md` 1절에 기록한다.
+
+## Vercel (프론트)
+
+- Root Directory는 `client`, 빌드는 Vite 기본값(`npm run build`, 출력 `dist`)이다.
+- API 주소는 `client/.env.production`의 `VITE_API_ORIGIN=https://api.fflux.kro.kr`로 빌드에 들어간다. Vercel 환경변수로 따로 넣지 않아도 된다.
+- `client/vercel.json`이 모든 경로를 `index.html`로 돌려 SPA 라우팅(`/broadcasts/1` 새로고침 등)을 받는다.
