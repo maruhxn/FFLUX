@@ -4,6 +4,7 @@ import com.maruhxn.fflux.broadcast.application.provided.BroadcastDetailResult
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastFinder
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastModifier
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastPage
+import com.maruhxn.fflux.broadcast.application.provided.BroadcastRecordingResult
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastStatusChanger
 import com.maruhxn.fflux.broadcast.application.provided.EditBroadcastCommand
 import com.maruhxn.fflux.broadcast.application.provided.IssuePublishTokenCommand
@@ -77,7 +78,8 @@ class BroadcastController(
 
     @PublicApi
     @GetMapping("/{id}")
-    fun detail(@PathVariable id: Long): BroadcastDetailResponse = BroadcastDetailResponse.of(broadcastFinder.find(id))
+    fun detail(member: LoginMember?, @PathVariable id: Long): BroadcastDetailResponse =
+        BroadcastDetailResponse.of(broadcastFinder.find(id, member?.memberId))
 }
 
 /** 제목·설명의 규칙(공백 제거, 길이)은 도메인 값 객체가 검사한다. */
@@ -110,6 +112,8 @@ data class BroadcastDetailResponse(
     val hlsUrl: String?,
     /** LIVE 방송의 지금 시청자 수. LIVE가 아니면 null. */
     val viewerCount: Int?,
+    /** 녹화. READY는 모두에게, 처리 중·실패는 스트리머에게만 담는다. 없거나 보이지 않으면 null. */
+    val recording: BroadcastRecordingResult?,
 ) {
     companion object {
         fun of(result: BroadcastDetailResult) = with(result.broadcast) {
@@ -125,6 +129,7 @@ data class BroadcastDetailResponse(
                 whepUrl = result.watchPath?.let(MediaUrls::whep),
                 hlsUrl = result.watchPath?.let(MediaUrls::hls),
                 viewerCount = viewerCount,
+                recording = result.recording,
             )
         }
     }

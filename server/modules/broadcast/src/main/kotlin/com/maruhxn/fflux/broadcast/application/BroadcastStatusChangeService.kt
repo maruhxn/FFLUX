@@ -66,7 +66,7 @@ class BroadcastStatusChangeService(
         val broadcast = broadcastRepository.findForUpdateByMediaPath(mediaPath)
             ?: return log.warn("송출 끊김: 방송이 없거나 삭제됨 path={}", mediaPath)
         try {
-            if (broadcast.endByDisconnect()) {
+            if (broadcast.endByDisconnect(LocalDateTime.now(clock))) {
                 log.info("방송 종료(송출 끊김): id={}", broadcast.id)
                 publishStatusChanged(broadcast)
             }
@@ -77,7 +77,7 @@ class BroadcastStatusChangeService(
 
     override fun requestEnd(broadcastId: Long, memberId: Long) {
         val broadcast = broadcastRepository.findForUpdate(broadcastId) ?: throw NotFoundException("방송을 찾을 수 없습니다.")
-        if (!broadcast.requestEnd(memberId)) return
+        if (!broadcast.requestEnd(memberId, LocalDateTime.now(clock))) return
         log.info("방송 종료(종료 요청): id={}", broadcast.id)
         publishStatusChanged(broadcast)
         eventPublisher.publish(BroadcastEndRequested(broadcast.id, checkNotNull(broadcast.mediaPath)))

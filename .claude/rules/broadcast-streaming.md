@@ -50,6 +50,10 @@ paths:
 - 방송 1건 = 녹화 1건(`broadcast_id` 유니크). 두 번째 세그먼트(12시간 초과)는 무시하고 로그만 남긴다.
 - 리먹싱이 성공하면 원본 fMP4를 지우고, 실패하면 남긴다. 자동 재시도는 없다.
 - 파일 경로는 DB에 저장하고, 재생 URL은 Caddy 정적 서빙 경로로 만든다.
+- 통지: `POST /internal/mediamtx/recordings/{processing|ready|failed}`(본문 `path`, `segmentPath`, ready는 `filePath`와 선택 `durationSeconds`). 항상 200이고, 방송이 없거나 삭제됐거나 두 번째 세그먼트면 경고 로그만 남긴다. 같은 통지의 반복과 두 번째 세그먼트는 처음 받은 세그먼트 경로로 가른다. `READY`는 되돌리지 않고, `FAILED`는 손으로 훅을 다시 돌려 `ready`가 오면 `READY`가 된다.
+- ffprobe 길이가 없으면 방송의 `startedAt`~`endedAt`(ENDED가 된 시각)으로 대신한다.
+- 노출: 방송 상세 `recording`(`status`, `url`, `durationSeconds`)에 READY는 모두에게, 처리 중·실패는 스트리머에게만 담는다. 다시보기 목록은 `GET /api/replays`(비로그인 허용, 방송 ID 최신순 커서, 20개).
+- 방송 삭제는 `BroadcastDeleted` 이벤트로 녹화의 `hidden_at`을 채워 숨긴다(파일·행 유지).
 
 ## 실시간 (SSE)
 

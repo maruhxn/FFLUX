@@ -21,7 +21,7 @@ paths:
   - `overridePublisher: no`.
   - `runOnAvailable`/`runOnUnavailable` → Spring `/internal/mediamtx/available`·`unavailable`. (MediaMTX 옛 이름 `runOnReady`/`runOnNotReady`는 쓰지 않는다)
   - path 정규식: `~^rec/` 는 `record: yes`, `~^live/` 는 `record: no`. `recordSegmentDuration`은 길게(예: 12h).
-  - `runOnRecordSegmentComplete` → `ffmpeg -c copy -movflags +faststart` 리먹싱 후 Spring에 통지.
+  - `runOnRecordSegmentComplete` → 리먹싱 전에 `processing`, `ffmpeg -c copy -movflags +faststart` 리먹싱 뒤 `ready`(파일 경로, ffprobe 길이) 또는 `failed`를 Spring `/internal/mediamtx/recordings/...`에 통지.
   - `webrtcAdditionalHosts`에 `fflux.kro.kr` 또는 VM 고정 외부 IP.
 - 개발은 로컬 Docker Compose + HTTPS 터널(Cloudflare Quick Tunnel 또는 ngrok)로 한다. 터널은 HTTP만 전달하므로 WebRTC 미디어는 같은 와이파이에서 PC 내부 IP로 연결된다(`webrtcAdditionalHosts`에 PC 내부 IP). LTE의 WebRTC 확인은 VM에서 한다.
 - VM은 GCP 신규 크레딧(90일)으로 운영하고, 평가가 끝날 때까지 켜 둔다.

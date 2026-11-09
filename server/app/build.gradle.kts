@@ -7,6 +7,7 @@ dependencies {
     implementation(project(":modules:member"))
     implementation(project(":modules:broadcast"))
     implementation(project(":modules:realtime"))
+    implementation(project(":modules:recording"))
 
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-validation")

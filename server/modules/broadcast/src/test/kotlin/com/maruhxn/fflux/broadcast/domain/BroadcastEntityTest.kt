@@ -21,7 +21,9 @@ class BroadcastEntityTest {
 
     private fun live() = register().apply { confirmPublishStarted(liveAt) }
 
-    private fun ended() = live().apply { endByDisconnect() }
+    private val endAt = liveAt.plusHours(1)
+
+    private fun ended() = live().apply { endByDisconnect(endAt) }
 
     @Test
     fun `등록하면 READY 방송이고 스트리머 닉네임을 그대로 담는다`() {
@@ -181,52 +183,56 @@ class BroadcastEntityTest {
     // 송출 끊김
 
     @Test
-    fun `송출이 끊기면 LIVE 방송이 ENDED가 된다`() {
+    fun `송출이 끊기면 LIVE 방송이 ENDED가 되고 그 시각을 종료 시각으로 남긴다`() {
         val broadcast = live()
 
-        assertTrue(broadcast.endByDisconnect())
+        assertTrue(broadcast.endByDisconnect(endAt))
         assertEquals(BroadcastStatus.ENDED, broadcast.status)
+        assertEquals(endAt, broadcast.endedAt)
     }
 
     @Test
     fun `이미 ENDED인 방송의 송출 끊김은 아무것도 바꾸지 않는다`() {
         val broadcast = ended()
 
-        assertFalse(broadcast.endByDisconnect())
+        assertFalse(broadcast.endByDisconnect(endAt.plusMinutes(1)))
         assertEquals(BroadcastStatus.ENDED, broadcast.status)
+        assertEquals(endAt, broadcast.endedAt)
     }
 
     @Test
     fun `READY 방송은 송출 끊김으로 끝낼 수 없다`() {
         val broadcast = register()
 
-        assertFailsWith<ConflictException> { broadcast.endByDisconnect() }
+        assertFailsWith<ConflictException> { broadcast.endByDisconnect(endAt) }
         assertEquals(BroadcastStatus.READY, broadcast.status)
     }
 
     // 종료 요청
 
     @Test
-    fun `스트리머가 종료를 요청하면 LIVE 방송이 ENDED가 된다`() {
+    fun `스트리머가 종료를 요청하면 LIVE 방송이 ENDED가 되고 그 시각을 종료 시각으로 남긴다`() {
         val broadcast = live()
 
-        assertTrue(broadcast.requestEnd(STREAMER))
+        assertTrue(broadcast.requestEnd(STREAMER, endAt))
         assertEquals(BroadcastStatus.ENDED, broadcast.status)
+        assertEquals(endAt, broadcast.endedAt)
     }
 
     @Test
     fun `이미 ENDED인 방송의 종료 요청은 아무것도 바꾸지 않는다`() {
         val broadcast = ended()
 
-        assertFalse(broadcast.requestEnd(STREAMER))
+        assertFalse(broadcast.requestEnd(STREAMER, endAt.plusMinutes(1)))
         assertEquals(BroadcastStatus.ENDED, broadcast.status)
+        assertEquals(endAt, broadcast.endedAt)
     }
 
     @Test
     fun `READY 방송은 종료를 요청할 수 없다`() {
         val broadcast = register()
 
-        assertFailsWith<ConflictException> { broadcast.requestEnd(STREAMER) }
+        assertFailsWith<ConflictException> { broadcast.requestEnd(STREAMER, endAt) }
         assertEquals(BroadcastStatus.READY, broadcast.status)
     }
 
@@ -234,7 +240,7 @@ class BroadcastEntityTest {
     fun `타인은 상태와 상관없이 종료를 요청할 수 없다`() {
         listOf(register(), live(), ended()).forEach { broadcast ->
             val before = broadcast.status
-            assertFailsWith<ForbiddenException> { broadcast.requestEnd(OTHER) }
+            assertFailsWith<ForbiddenException> { broadcast.requestEnd(OTHER, endAt) }
             assertEquals(before, broadcast.status)
         }
     }

@@ -7,6 +7,7 @@ import com.maruhxn.fflux.broadcast.application.provided.EditBroadcastCommand
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastFinder
 import com.maruhxn.fflux.broadcast.application.provided.BroadcastModifier
 import com.maruhxn.fflux.broadcast.application.provided.RegisterBroadcastCommand
+import com.maruhxn.fflux.broadcast.application.required.BroadcastRecordingFinder
 import com.maruhxn.fflux.broadcast.application.required.BroadcastRepository
 import com.maruhxn.fflux.broadcast.application.required.PublishTokenRepository
 import com.maruhxn.fflux.broadcast.application.required.ViewerCounter
@@ -16,6 +17,7 @@ import com.maruhxn.fflux.broadcast.domain.BroadcastStatus
 import com.maruhxn.fflux.broadcast.domain.BroadcastTitle
 import com.maruhxn.fflux.common.error.BadRequestException
 import com.maruhxn.fflux.common.error.NotFoundException
+import com.maruhxn.fflux.common.event.BroadcastDeleted
 import com.maruhxn.fflux.common.event.BroadcastUpdated
 import com.maruhxn.fflux.common.event.EventPublisherPort
 import org.springframework.stereotype.Service
@@ -30,6 +32,7 @@ class BroadcastService(
     private val publishTokenRepository: PublishTokenRepository,
     private val eventPublisher: EventPublisherPort,
     private val viewerCounter: ViewerCounter,
+    private val broadcastRecordingFinder: BroadcastRecordingFinder,
     private val clock: Clock,
 ) : BroadcastModifier, BroadcastFinder {
 
@@ -57,17 +60,29 @@ class BroadcastService(
         val now = LocalDateTime.now(clock)
         findForUpdateOrThrow(broadcastId).delete(memberId, now)
         publishTokenRepository.revokeUnconsumed(broadcastId, now)
+        eventPublisher.publish(BroadcastDeleted(broadcastId))
     }
 
     @Transactional(readOnly = true)
-    override fun find(broadcastId: Long): BroadcastDetailResult {
+    override fun find(broadcastId: Long, memberId: Long?): BroadcastDetailResult {
         val broadcast = broadcastRepository.findByIdAndDeletedAtIsNull(broadcastId) ?: throw notFound()
         val viewerCount = viewerCountsOf(listOf(broadcast))[broadcast.id]
         return BroadcastDetailResult(
             broadcast.toResult(viewerCount),
             watchPath = broadcast.mediaPath.takeIf { broadcast.isWatchable() },
+            recording = broadcastRecordingFinder.recordingOf(broadcast.id, memberId),
         )
     }
+
+    @Transactional(readOnly = true)
+    override fun findByMediaPath(mediaPath: String): BroadcastResult? =
+        broadcastRepository.findByMediaPathAndDeletedAtIsNull(mediaPath)?.toResult(viewerCount = null)
+
+    @Transactional(readOnly = true)
+    override fun findEnded(broadcastIds: Collection<Long>): List<BroadcastResult> =
+        if (broadcastIds.isEmpty()) emptyList()
+        else broadcastRepository.findAllByIdInAndStatusAndDeletedAtIsNull(broadcastIds, BroadcastStatus.ENDED)
+            .map { it.toResult(viewerCount = null) }
 
     @Transactional(readOnly = true)
     override fun findStreamerId(broadcastId: Long): Long =
@@ -122,6 +137,7 @@ class BroadcastService(
         status = status,
         createdAt = createdAt,
         startedAt = startedAt,
+        endedAt = endedAt,
         viewerCount = viewerCount,
     )
 

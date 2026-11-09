@@ -66,8 +66,7 @@ pathDefaults:
   recordSegmentDuration: 12h
   # 원본 세그먼트를 자동 삭제하지 않는다.
   recordDeleteAfter: 0s
-  # 세그먼트가 끝나면 faststart MP4로 리먹싱한다.
-  # 스파이크에서는 파일만 만들고, 서버 연동 단계에서 리먹싱 후 Spring 통지를 붙인다.
+  # 세그먼트가 끝나면 faststart MP4로 리먹싱하고, 처리 상태를 Spring /internal/mediamtx/recordings/... 로 알린다.
   runOnRecordSegmentComplete: sh /hooks/remux-recording.sh
 
 ###############################################

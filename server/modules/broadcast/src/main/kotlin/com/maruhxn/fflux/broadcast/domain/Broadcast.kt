@@ -63,6 +63,10 @@ class Broadcast protected constructor(
     var startedAt: LocalDateTime? = null
         protected set
 
+    /** ENDED가 된 시각. 녹화 길이를 알 수 없을 때 [startedAt]과 함께 쓴다. 끝난 적 없으면 null. */
+    var endedAt: LocalDateTime? = null
+        protected set
+
     @Column(nullable = false)
     var recordingEnabled: Boolean = false
         protected set
@@ -112,21 +116,26 @@ class Broadcast protected constructor(
         BroadcastStatus.ENDED -> throw ConflictException("끝난 방송은 다시 송출할 수 없습니다.")
     }
 
-    /** 송출 끊김: 미디어 서버에 영상이 더 들어오지 않으면 LIVE → ENDED. */
-    fun endByDisconnect(): Boolean = when (status) {
-        BroadcastStatus.LIVE -> true.also { status = BroadcastStatus.ENDED }
+    /** 송출 끊김: 미디어 서버에 영상이 더 들어오지 않으면 LIVE → ENDED. [now]를 종료 시각으로 남긴다. */
+    fun endByDisconnect(now: LocalDateTime): Boolean = when (status) {
+        BroadcastStatus.LIVE -> true.also { end(now) }
         BroadcastStatus.ENDED -> false
         BroadcastStatus.READY -> throw ConflictException("송출하지 않은 방송은 끝낼 수 없습니다.")
     }
 
-    /** 종료 요청: 스트리머가 직접 LIVE 방송을 끝낸다. 송출 끊김이 먼저 끝냈으면 그대로 둔다. */
-    fun requestEnd(memberId: Long): Boolean {
+    /** 종료 요청: 스트리머가 직접 LIVE 방송을 끝낸다. 송출 끊김이 먼저 끝냈으면 그대로 둔다. [now]를 종료 시각으로 남긴다. */
+    fun requestEnd(memberId: Long, now: LocalDateTime): Boolean {
         checkStreamer(memberId)
         return when (status) {
-            BroadcastStatus.LIVE -> true.also { status = BroadcastStatus.ENDED }
+            BroadcastStatus.LIVE -> true.also { end(now) }
             BroadcastStatus.ENDED -> false
             BroadcastStatus.READY -> throw ConflictException("방송 중이 아니라 종료할 수 없습니다. 송출하지 않은 방송은 삭제하세요.")
         }
+    }
+
+    private fun end(now: LocalDateTime) {
+        status = BroadcastStatus.ENDED
+        endedAt = now
     }
 
     private fun checkStreamer(memberId: Long) {
