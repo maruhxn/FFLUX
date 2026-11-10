@@ -42,5 +42,5 @@ fflux:
     # MediaMTX Control API(송출 세션 kick). 로컬은 infra compose가 127.0.0.1:9997에 연다.
     api-url: ${MEDIAMTX_API_URL:http://localhost:9997}
   toss:
-    # 토스페이먼츠 결제위젯 시크릿 키(테스트 키는 test_gsk_로 시작). 비어 있으면 결제 승인이 거절된다.
+    # 토스페이먼츠 API 개별 연동 시크릿 키(테스트 키는 test_sk_로 시작). 비어 있으면 결제 승인이 거절된다.
     secret-key: ${TOSS_SECRET_KEY:}

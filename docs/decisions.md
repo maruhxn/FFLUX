@@ -172,7 +172,8 @@
 ## 7. 후원
 
 - 토스페이먼츠 테스트 모드.
-- 흐름: 서버가 `Donation(PENDING, orderId, amount, broadcastId, donorId, streamerId)` 생성 → 결제위젯 결제 → successUrl 복귀 → 서버가 PENDING 금액과 요청 금액 일치, 토스 승인 API 결과, 후원 대상 확인 → `DONE`.
+- 결제 UI는 결제위젯이 아니라 결제창(SDK `payment().requestPayment`, 카드)을 쓴다. 결제위젯 연동 키는 전자결제 이용 신청(사업자 등록) 전에는 문서용 공용 키만 나오고, 공용 키 결제는 공용 상점 소속이라 내 계정의 테스트 결제내역과 웹훅이 동작하지 않는다. 결제창은 회원가입만으로 나오는 개발 연동 체험 상점의 API 개별 연동 키(`test_ck_`, `test_sk_`)를 쓰므로 웹훅까지 확인할 수 있다.
+- 흐름: 서버가 `Donation(PENDING, orderId, amount, broadcastId, donorId, streamerId)` 생성 → 결제창(카드) 결제 → successUrl 복귀 → 서버가 PENDING 금액과 요청 금액 일치, 토스 승인 API 결과, 후원 대상 확인 → `DONE`.
 - 웹훅도 수신. `orderId` 유니크 + `PENDING → DONE` 1회 전이로 같은 승인 통지가 반복돼도 한 번만 적립.
 - 결제 상태 웹훅에는 서명이 없으므로 본문을 믿지 않는다. 웹훅은 신호로만 쓰고, 서버가 `paymentKey`로 토스 결제 조회 API를 불러 상태·금액·`orderId`를 확인한 뒤 같은 확정 경로를 탄다.
 - 승인 응답이 유실된 뒤 다시 승인을 요청해 `ALREADY_PROCESSED_PAYMENT`가 오면 결제 조회 API로 확인해 확정한다. 그래도 남은 건은 웹훅이 채운다.

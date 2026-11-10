@@ -8,7 +8,7 @@ paths:
 ## 흐름
 
 1. 후원 요청: 로그인 사용자가 방송과 금액을 고른다. 서버가 방송의 스트리머를 조회해 `Donation(PENDING, orderId, amount, broadcastId, donorId, streamerId)`를 만든다. 후원 대상은 클라이언트 입력이 아니라 서버가 조회한 스트리머다. 후원자가 그 스트리머 본인이면 403으로 거절한다(자기 방송 후원 불가).
-2. 결제위젯 결제 후 successUrl로 복귀하면 서버가 확정한다: 요청 금액 == PENDING 금액, 토스 승인 API 성공, 후원 대상 일치. 모두 맞으면 `DONE`, 하나라도 다르면 확정하지 않는다.
+2. 결제창(카드) 결제 후 successUrl로 복귀하면 서버가 확정한다: 요청 금액 == PENDING 금액, 토스 승인 API 성공, 후원 대상 일치. 모두 맞으면 `DONE`, 하나라도 다르면 확정하지 않는다.
 3. 웹훅도 같은 확정 경로를 탄다. 결제 상태 웹훅은 서명이 없으므로 본문을 믿지 않고, `paymentKey`로 토스 결제 조회 API를 불러 상태·금액·`orderId`를 확인한다. 승인 재요청에 `ALREADY_PROCESSED_PAYMENT`가 오면 마찬가지로 조회 API로 확인한다.
 - failUrl로 돌아오면 `CANCELED`로 바꾼다. 상태는 `PENDING → DONE | CANCELED`이고, 이탈한 PENDING은 그대로 둔다(만료 스케줄러 없음).
 4. `DONE`이 되면 `DonationConfirmed` 이벤트를 발행한다(LIVE면 SSE 알림).

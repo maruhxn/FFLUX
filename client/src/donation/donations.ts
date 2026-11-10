@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
+import { ANONYMOUS, loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { api } from '../api/client'
 
 /** 금액 범위와 메시지 길이. 서버 값 객체(`DonationAmount`, `DonationMessage`)와 같다. */
@@ -7,7 +8,7 @@ export const DONATION_MAX = 1_000_000
 export const DONATION_MESSAGE_MAX_LENGTH = 100
 export const DONATION_PRESETS = [1_000, 5_000, 10_000] as const
 
-/** 토스페이먼츠 결제위젯 클라이언트 키. 비밀값이 아니다. 비어 있으면 후원 결제를 열 수 없다. */
+/** 토스페이먼츠 클라이언트 키(API 개별 연동 키, 결제창). 비밀값이 아니다. 비어 있으면 후원 결제를 열 수 없다. */
 export const TOSS_CLIENT_KEY: string = import.meta.env.VITE_TOSS_CLIENT_KEY ?? ''
 
 /** 결제창에 넘길 주문. 확정·취소 응답도 같은 모양이다. */
@@ -23,11 +24,29 @@ export function amountError(amount: number): string | null {
 
 export const formatWon = (amount: number) => `${amount.toLocaleString('ko-KR')}원`
 
-/** 결제 전 PENDING 후원을 만든다. 대상은 서버가 방송의 스트리머로 정한다. */
-export function useRequestDonation(broadcastId: number) {
+/**
+ * 결제 전 PENDING 후원을 만들고 토스 결제창(카드)을 연다. 대상은 서버가 방송의 스트리머로 정한다.
+ * 결제하면 successUrl·failUrl 페이지로 이동하므로, 성공하면 이 화면으로 돌아오지 않는다.
+ */
+export function useDonate(broadcastId: number, orderName: string) {
   return useMutation({
-    mutationFn: (input: { amount: number; message: string }) =>
-      api<DonationOrder>(`/api/broadcasts/${broadcastId}/donations`, { method: 'POST', body: input }),
+    mutationFn: async (input: { amount: number; message: string }) => {
+      const order = await api<DonationOrder>(`/api/broadcasts/${broadcastId}/donations`, { method: 'POST', body: input })
+      const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY)
+      try {
+        await tossPayments.payment({ customerKey: ANONYMOUS }).requestPayment({
+          method: 'CARD',
+          amount: { currency: 'KRW', value: order.amount },
+          orderId: order.orderId,
+          orderName,
+          successUrl: `${window.location.origin}/donations/success`,
+          failUrl: `${window.location.origin}/donations/fail`,
+        })
+      } catch (e) {
+        // 결제창을 직접 닫은 것은 오류가 아니다. 주문은 PENDING으로 남는다(이탈 건).
+        if ((e as { code?: string }).code !== 'USER_CANCEL') throw e
+      }
+    },
   })
 }
 
