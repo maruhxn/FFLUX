@@ -10,10 +10,16 @@ interface CommentRepository {
     /** 숨기지 않은 댓글을 행 잠금(`SELECT … FOR UPDATE`)으로 읽는다. */
     fun findForUpdateById(id: Long): Comment?
 
-    /** 방송의 숨기지 않은 댓글(삭제된 댓글 포함)을 ID 내림차순으로 [limit]개까지 읽는다. [cursor]가 있으면 그보다 작은 ID만 읽는다. */
+    /** 방송의 숨기지 않은 원댓글(삭제된 댓글 포함, 답글 제외)을 ID 내림차순으로 [limit]개까지 읽는다. [cursor]가 있으면 그보다 작은 ID만 읽는다. */
     fun findPage(broadcastId: Long, cursor: Long?, limit: Int): List<Comment>
 
-    /** 방송의 숨기지 않았고 삭제되지 않은 댓글 수. */
+    /** 원댓글의 숨기지 않은 답글(삭제된 답글 포함)을 ID 오름차순으로 [limit]개까지 읽는다. [cursor]가 있으면 그보다 큰 ID만 읽는다. */
+    fun findReplies(parentId: Long, cursor: Long?, limit: Int): List<Comment>
+
+    /** 원댓글별 숨기지 않았고 삭제되지 않은 답글 수. 답글이 없는 원댓글은 빠진다. */
+    fun countVisibleReplies(parentIds: Collection<Long>): Map<Long, Long>
+
+    /** 방송의 숨기지 않았고 삭제되지 않은 댓글 수(답글 포함). */
     fun countVisible(broadcastId: Long): Long
 
     /** 방송의 아직 숨기지 않은 댓글을 모두 숨기고, 바뀐 행 수를 돌려준다. */

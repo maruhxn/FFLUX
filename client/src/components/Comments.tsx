@@ -1,3 +1,4 @@
+import type { UseMutationResult } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { ApiError } from '../api/client'
@@ -8,7 +9,9 @@ import {
   useComments,
   useDeleteComment,
   useEditComment,
+  useReplies,
   useWriteComment,
+  useWriteReply,
   type Comment,
 } from '../comment/comments'
 
@@ -21,7 +24,7 @@ function errorOf(error: Error | null) {
   return (error instanceof ApiError && error.fieldErrors.content) || error.message
 }
 
-/** 다시보기 댓글. 로그인하면 쓰고, 내 댓글만 고치고 지운다. */
+/** 다시보기 댓글. 로그인하면 쓰고 답글을 달며, 내 댓글·답글만 고치고 지운다. */
 export function Comments({ broadcastId }: { broadcastId: number }) {
   const { data: me } = useMe()
   const { data, error, isPending, hasNextPage, fetchNextPage, isFetchingNextPage } = useComments(broadcastId)
@@ -30,7 +33,7 @@ export function Comments({ broadcastId }: { broadcastId: number }) {
     <section className="space-y-4">
       <h2 className="text-lg font-semibold">댓글 {data ? data.pages[0].count.toLocaleString('ko-KR') : ''}</h2>
       {me ? (
-        <CommentForm broadcastId={broadcastId} />
+        <NewCommentForm broadcastId={broadcastId} />
       ) : (
         <p className="rounded-md border border-neutral-800 px-3 py-3 text-sm text-neutral-400">
           <Link to="/login" className="text-emerald-400 hover:underline">
@@ -49,7 +52,7 @@ export function Comments({ broadcastId }: { broadcastId: number }) {
             {data.pages
               .flatMap((page) => page.items)
               .map((comment) => (
-                <CommentItem key={comment.id} broadcastId={broadcastId} comment={comment} mine={comment.authorId === me?.memberId} />
+                <CommentThread key={comment.id} broadcastId={broadcastId} comment={comment} memberId={me?.memberId ?? null} />
               ))}
           </ul>
           {hasNextPage && (
@@ -68,13 +71,130 @@ export function Comments({ broadcastId }: { broadcastId: number }) {
   )
 }
 
-function CommentForm({ broadcastId }: { broadcastId: number }) {
-  const [content, setContent] = useState('')
-  const write = useWriteComment(broadcastId)
+function NewCommentForm({ broadcastId }: { broadcastId: number }) {
+  return <CommentForm write={useWriteComment(broadcastId)} placeholder="댓글을 입력하세요." />
+}
+
+/** 원댓글 하나와 그 답글. 답글은 접어 두고 "답글 N개"로 펼친다. 원댓글·답글의 "답글"은 이 원댓글 아래 작성 칸을 연다. */
+function CommentThread({ broadcastId, comment, memberId }: { broadcastId: number; comment: Comment; memberId: number | null }) {
+  const [open, setOpen] = useState(false)
+  // 작성 칸에 채울 글. 다른 글의 "답글"을 누르면 칸을 새로 연다(key).
+  const [draft, setDraft] = useState<{ text: string; key: number } | null>(null)
+  const replyTo =
+    memberId === null ? undefined : (target: Comment) => setDraft({ text: `@${target.authorNickname} `, key: Date.now() })
+
+  return (
+    <li className="py-3">
+      <CommentItem
+        broadcastId={broadcastId}
+        comment={comment}
+        mine={comment.authorId === memberId}
+        onReply={replyTo && (() => replyTo(comment))}
+      />
+      {comment.replyCount > 0 && (
+        <button type="button" onClick={() => setOpen(!open)} className="mt-1 text-xs font-semibold text-emerald-400">
+          {open ? '답글 접기' : `답글 ${comment.replyCount.toLocaleString('ko-KR')}개`}
+        </button>
+      )}
+      <div className="ml-6 space-y-3">
+        {open && <Replies broadcastId={broadcastId} parentId={comment.id} memberId={memberId} onReply={replyTo} />}
+        {draft && (
+          <ReplyForm
+            key={draft.key}
+            broadcastId={broadcastId}
+            parentId={comment.id}
+            initial={draft.text}
+            onDone={() => {
+              setDraft(null)
+              setOpen(true)
+            }}
+            onCancel={() => setDraft(null)}
+          />
+        )}
+      </div>
+    </li>
+  )
+}
+
+function Replies({
+  broadcastId,
+  parentId,
+  memberId,
+  onReply,
+}: {
+  broadcastId: number
+  parentId: number
+  memberId: number | null
+  onReply?: (target: Comment) => void
+}) {
+  const { data, error, isPending, hasNextPage, fetchNextPage, isFetchingNextPage } = useReplies(broadcastId, parentId)
+
+  if (isPending) return <p className="mt-2 text-sm text-neutral-400">불러오는 중…</p>
+  if (error) return <p className="mt-2 text-sm text-red-400">{error.message}</p>
+
+  return (
+    <div>
+      <ul>
+        {data.pages
+          .flatMap((page) => page.items)
+          .map((reply) => (
+            <li key={reply.id} className="pt-3">
+              <CommentItem
+                broadcastId={broadcastId}
+                comment={reply}
+                mine={reply.authorId === memberId}
+                onReply={onReply && (() => onReply(reply))}
+              />
+            </li>
+          ))}
+      </ul>
+      {hasNextPage && (
+        <button
+          type="button"
+          onClick={() => fetchNextPage()}
+          disabled={isFetchingNextPage}
+          className="mt-2 text-xs font-semibold text-emerald-400 disabled:opacity-50"
+        >
+          답글 더 보기
+        </button>
+      )}
+    </div>
+  )
+}
+
+function ReplyForm({
+  broadcastId,
+  parentId,
+  ...form
+}: {
+  broadcastId: number
+  parentId: number
+  initial: string
+  onDone: () => void
+  onCancel: () => void
+}) {
+  return <CommentForm write={useWriteReply(broadcastId, parentId)} placeholder="답글을 입력하세요." {...form} />
+}
+
+/** 댓글·답글 작성 칸. 등록하면 비우거나 [onDone]을 부른다. [onCancel]이 있으면 "취소"를 보인다. */
+function CommentForm({
+  write,
+  placeholder,
+  initial = '',
+  onDone,
+  onCancel,
+}: {
+  write: UseMutationResult<unknown, Error, string>
+  placeholder: string
+  initial?: string
+  onDone?: () => void
+  onCancel?: () => void
+}) {
+  const [content, setContent] = useState(initial)
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    write.mutate(content, { onSuccess: () => setContent('') })
+    write.mutate(content, { onSuccess: () => (onDone ? onDone() : setContent('')) })
   }
 
   return (
@@ -85,7 +205,8 @@ function CommentForm({ broadcastId }: { broadcastId: number }) {
         maxLength={COMMENT_MAX_LENGTH}
         rows={3}
         required
-        placeholder="댓글을 입력하세요."
+        autoFocus={!!onCancel}
+        placeholder={placeholder}
         className={TEXTAREA}
       />
       <div className="flex items-center justify-between gap-2">
@@ -94,6 +215,11 @@ function CommentForm({ broadcastId }: { broadcastId: number }) {
           <span className="text-xs text-neutral-500 tabular-nums">
             {content.length}/{COMMENT_MAX_LENGTH}
           </span>
+          {onCancel && (
+            <button type="button" onClick={onCancel} className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800">
+              취소
+            </button>
+          )}
           <button
             type="submit"
             disabled={write.isPending}
@@ -107,12 +233,23 @@ function CommentForm({ broadcastId }: { broadcastId: number }) {
   )
 }
 
-function CommentItem({ broadcastId, comment, mine }: { broadcastId: number; comment: Comment; mine: boolean }) {
+/** 댓글·답글 한 개. [onReply]가 있으면(로그인했으면) "답글"을 보인다. */
+function CommentItem({
+  broadcastId,
+  comment,
+  mine,
+  onReply,
+}: {
+  broadcastId: number
+  comment: Comment
+  mine: boolean
+  onReply?: () => void
+}) {
   const [editing, setEditing] = useState<string | null>(null)
   const edit = useEditComment(broadcastId)
   const remove = useDeleteComment(broadcastId)
 
-  if (comment.deleted) return <li className="py-3 text-sm text-neutral-500">삭제된 댓글입니다</li>
+  if (comment.deleted) return <p className="text-sm text-neutral-500">삭제된 댓글입니다</p>
 
   function submit(e: FormEvent) {
     e.preventDefault()
@@ -126,19 +263,28 @@ function CommentItem({ broadcastId, comment, mine }: { broadcastId: number; comm
   }
 
   return (
-    <li className="space-y-1 py-3">
+    <div className="space-y-1">
       <div className="flex items-center gap-2 text-sm">
         <span className="font-semibold">{comment.authorNickname}</span>
         <span className="text-xs text-neutral-500">{formatDateTime(comment.createdAt)}</span>
         {comment.edited && <span className="text-xs text-neutral-500">(수정됨)</span>}
-        {mine && editing === null && (
+        {editing === null && (onReply || mine) && (
           <span className="ml-auto flex gap-2 text-xs">
-            <button type="button" onClick={() => setEditing(comment.content ?? '')} className="text-neutral-400 hover:text-white">
-              수정
-            </button>
-            <button type="button" onClick={onDelete} disabled={remove.isPending} className="text-red-400 hover:text-red-300">
-              삭제
-            </button>
+            {onReply && (
+              <button type="button" onClick={onReply} className="text-neutral-400 hover:text-white">
+                답글
+              </button>
+            )}
+            {mine && (
+              <>
+                <button type="button" onClick={() => setEditing(comment.content ?? '')} className="text-neutral-400 hover:text-white">
+                  수정
+                </button>
+                <button type="button" onClick={onDelete} disabled={remove.isPending} className="text-red-400 hover:text-red-300">
+                  삭제
+                </button>
+              </>
+            )}
           </span>
         )}
       </div>
@@ -166,6 +312,6 @@ function CommentItem({ broadcastId, comment, mine }: { broadcastId: number; comm
         </form>
       )}
       {remove.error && <p className="text-xs text-red-400">{remove.error.message}</p>}
-    </li>
+    </div>
   )
 }

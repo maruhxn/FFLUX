@@ -14,11 +14,13 @@ import java.time.LocalDateTime
 /**
  * 다시보기에 단 댓글. 작성자 닉네임은 작성 시점의 값을 남긴다.
  * 수정·삭제는 작성자만 한다(스트리머도 못 한다). 삭제는 soft delete라 목록에 자리가 남는다.
+ * 답글은 원댓글을 부모로 가진 댓글이고 한 단계만 둔다(답글에는 답글을 달 수 없다).
  */
 @Entity
 @Table(name = "comment")
 class Comment protected constructor(
     broadcastId: Long,
+    parentId: Long?,
     authorId: Long,
     authorNickname: String,
     content: CommentContent,
@@ -30,6 +32,9 @@ class Comment protected constructor(
 
     @Column(nullable = false)
     val broadcastId: Long = broadcastId
+
+    /** 답글이면 원댓글 ID, 원댓글이면 null. */
+    val parentId: Long? = parentId
 
     @Column(nullable = false)
     val authorId: Long = authorId
@@ -79,6 +84,12 @@ class Comment protected constructor(
 
     companion object {
         fun write(broadcastId: Long, authorId: Long, authorNickname: String, content: CommentContent, now: LocalDateTime) =
-            Comment(broadcastId, authorId, authorNickname, content, now)
+            Comment(broadcastId, null, authorId, authorNickname, content, now)
+
+        /** [parent]에 다는 답글. 같은 방송에 달리고, 답글에는 답글을 달 수 없다(409). */
+        fun reply(parent: Comment, authorId: Long, authorNickname: String, content: CommentContent, now: LocalDateTime): Comment {
+            if (parent.parentId != null) throw ConflictException("답글에는 답글을 달 수 없습니다.")
+            return Comment(parent.broadcastId, parent.id, authorId, authorNickname, content, now)
+        }
     }
 }

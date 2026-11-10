@@ -8,6 +8,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CommentEntityTest {
@@ -87,6 +88,24 @@ class CommentEntityTest {
 
         assertFailsWith<ForbiddenException> { comment.edit(OTHER, CommentContent.of("되살리기"), now) }
         assertFailsWith<ForbiddenException> { comment.delete(OTHER, now) }
+    }
+
+    @Test
+    fun `답글은 원댓글과 같은 방송에 원댓글을 부모로 달린다`() {
+        val parent = write()
+
+        val reply = Comment.reply(parent, OTHER, "답글러", CommentContent.of("동감"), now)
+
+        assertEquals(BROADCAST, reply.broadcastId)
+        assertEquals(parent.id, reply.parentId)
+        assertNull(parent.parentId)
+    }
+
+    @Test
+    fun `답글에는 답글을 달 수 없어 409`() {
+        val reply = Comment.reply(write(), OTHER, "답글러", CommentContent.of("동감"), now)
+
+        assertFailsWith<ConflictException> { Comment.reply(reply, AUTHOR, "작성자", CommentContent.of("고마워요"), now) }
     }
 
     companion object {

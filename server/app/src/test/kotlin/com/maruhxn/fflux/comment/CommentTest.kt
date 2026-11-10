@@ -177,6 +177,65 @@ class CommentTest : BroadcastFlowTest() {
         assertEquals(HttpStatus.NOT_FOUND, edit(commentId, other, "x").statusCode)
     }
 
+    // 답글
+
+    @Test
+    fun `답글은 원댓글 목록에서 빠지고 원댓글의 답글 수와 댓글 수에 들어간다`() {
+        val id = replay()
+        val parentId = writeId(id, streamer, "원댓글")
+
+        assertEquals(HttpStatus.CREATED, reply(parentId, other, "  답글  ").statusCode)
+
+        val page = comments(id, null).body!!
+        assertEquals(2, (page["count"] as Number).toInt())
+        val parent = items(page).single()
+        assertEquals(parentId, parent["id"])
+        assertEquals(1, (parent["replyCount"] as Number).toInt())
+        val answer = items(replies(parentId, null).body!!).single()
+        assertEquals("답글", answer["content"])
+        assertEquals("테스트시청자", answer["authorNickname"])
+    }
+
+    @Test
+    fun `답글은 비로그인 401, 회원과 스트리머는 쓸 수 있고 본문 규칙은 댓글과 같다`() {
+        val parentId = writeId(replay(), other, "원댓글")
+
+        assertEquals(HttpStatus.UNAUTHORIZED, reply(parentId, null, "답글").statusCode)
+        assertEquals(HttpStatus.CREATED, reply(parentId, streamer, "고마워요").statusCode)
+        assertEquals(HttpStatus.CREATED, reply(parentId, other, "저도요").statusCode)
+        assertEquals(HttpStatus.BAD_REQUEST, reply(parentId, other, " ").statusCode)
+    }
+
+    @Test
+    fun `답글에 답글을 달면 409`() {
+        val replyId = replyId(writeId(replay(), other, "원댓글"), streamer, "답글")
+
+        assertEquals(HttpStatus.CONFLICT, reply(replyId, other, "답글의 답글").statusCode)
+    }
+
+    @Test
+    fun `없거나 방송이 삭제된 원댓글에 답글을 달면 404`() {
+        val id = replay()
+        val parentId = writeId(id, other, "원댓글")
+        assertEquals(HttpStatus.NO_CONTENT, delete(id, streamer).statusCode)
+
+        assertEquals(HttpStatus.NOT_FOUND, reply(parentId, other, "답글").statusCode)
+        assertEquals(HttpStatus.NOT_FOUND, reply(9999, other, "답글").statusCode)
+    }
+
+    @Test
+    fun `답글 목록은 비로그인도 보고 오래된순 20개씩 nextCursor로 이어 읽는다`() {
+        val parentId = writeId(replay(), other, "원댓글")
+        val ids = (1..21).map { replyId(parentId, streamer, "답글 $it") }
+
+        val first = replies(parentId, null).body!!
+        assertEquals(ids.take(20), items(first).map { it["id"] })
+
+        val second = replies(parentId, (first["nextCursor"] as Number).toLong()).body!!
+        assertEquals(listOf(ids.last()), items(second).map { it["id"] })
+        assertNull(second["nextCursor"])
+    }
+
     // 헬퍼
 
     /** 녹화를 켜고 송출한 뒤 끝나 녹화가 READY가 된 방송(다시보기). */
@@ -236,6 +295,24 @@ class CommentTest : BroadcastFlowTest() {
     @Suppress("UNCHECKED_CAST")
     private fun comments(broadcastId: Long, cursor: Long?): ResponseEntity<Map<String, Any?>> =
         http.get().uri { it.path("/api/broadcasts/{id}/comments").queryParamIfPresent("cursor", java.util.Optional.ofNullable(cursor)).build(broadcastId) }
+            .retrieve().toEntity(Map::class.java) as ResponseEntity<Map<String, Any?>>
+
+    @Suppress("UNCHECKED_CAST")
+    private fun reply(parentId: Any, cookie: String?, content: String): ResponseEntity<Map<String, Any?>> =
+        http.post().uri("/api/comments/{id}/replies", parentId).withCookie(cookie)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(mapOf("content" to content))
+            .retrieve().toEntity(Map::class.java) as ResponseEntity<Map<String, Any?>>
+
+    private fun replyId(parentId: Any, cookie: String, content: String): Any {
+        val response = reply(parentId, cookie, content)
+        assertEquals(HttpStatus.CREATED, response.statusCode)
+        return response.body!!["id"]!!
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun replies(parentId: Any, cursor: Long?): ResponseEntity<Map<String, Any?>> =
+        http.get().uri { it.path("/api/comments/{id}/replies").queryParamIfPresent("cursor", java.util.Optional.ofNullable(cursor)).build(parentId) }
             .retrieve().toEntity(Map::class.java) as ResponseEntity<Map<String, Any?>>
 
     @Suppress("UNCHECKED_CAST")
