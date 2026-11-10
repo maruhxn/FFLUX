@@ -15,7 +15,8 @@ type Active = {
   broadcastId: number
   capture: Capture
   whip: WebRtcSession
-  events: EventSource
+  /** 방송별 SSE를 닫는다. */
+  closeEvents: () => void
   wakeLock: WakeLockSentinel | null
   // 이 탭이 종료를 요청했다. 서버가 응답보다 SSE의 ENDED를 먼저 보낼 수 있어 요청 전에 표시해 둔다.
   ending: boolean
@@ -82,7 +83,7 @@ async function release() {
   if (!current) return
   if (!current.ending) lostBroadcastId = current.broadcastId
   setActive(null)
-  current.events.close()
+  current.closeEvents()
   window.removeEventListener('beforeunload', confirmUnload)
   document.removeEventListener('visibilitychange', renewWakeLock)
   void current.wakeLock?.release()
@@ -117,14 +118,15 @@ export async function startPublish(broadcastId: number, capture: Capture, whipUr
   const releaseIfEnded = (status: string | undefined) => {
     if (status === 'ENDED' && active?.whip === whip) void release()
   }
-  const events = openBroadcastEvents(broadcastId)
-  events.addEventListener(BROADCAST_STATUS_EVENT, (e) => releaseIfEnded(parseStatusMessage(e).status))
-  events.addEventListener('open', async () => {
-    const broadcast = await api<BroadcastDetail>(`/api/broadcasts/${broadcastId}`).catch(() => null)
-    releaseIfEnded(broadcast?.status)
+  const closeEvents = openBroadcastEvents(broadcastId, (events) => {
+    events.addEventListener(BROADCAST_STATUS_EVENT, (e) => releaseIfEnded(parseStatusMessage(e).status))
+    events.addEventListener('open', async () => {
+      const broadcast = await api<BroadcastDetail>(`/api/broadcasts/${broadcastId}`).catch(() => null)
+      releaseIfEnded(broadcast?.status)
+    })
   })
   lostBroadcastId = null
-  setActive({ broadcastId, capture, whip, events, wakeLock: null, ending: false })
+  setActive({ broadcastId, capture, whip, closeEvents, wakeLock: null, ending: false })
   window.addEventListener('beforeunload', confirmUnload)
   document.addEventListener('visibilitychange', renewWakeLock)
   void renewWakeLock()
