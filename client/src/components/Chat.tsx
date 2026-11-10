@@ -21,15 +21,16 @@ export function Chat({ broadcastId }: { broadcastId: number }) {
   }, [chats])
 
   return (
-    <section className="space-y-2">
-      <h2 className="text-lg font-semibold">채팅</h2>
+    <section className="flex h-96 flex-col lg:h-full">
+      <h2 className="shrink-0 border-b border-neutral-800 py-3 text-center text-sm font-semibold">채팅</h2>
       <ul
         ref={listRef}
         onScroll={(e) => {
           const list = e.currentTarget
           atBottomRef.current = list.scrollHeight - list.scrollTop - list.clientHeight < STICK_TO_BOTTOM_PX
         }}
-        className="h-72 space-y-1 overflow-y-auto rounded-lg border border-neutral-800 px-3 py-2 text-sm">
+        className="min-h-0 flex-1 space-y-1.5 overflow-y-auto px-4 py-3 text-sm"
+      >
         {error && <li className="text-red-400">{error.message}</li>}
         {chats?.length === 0 && <li className="text-neutral-500">아직 채팅이 없습니다.</li>}
         {chats?.map((chat) => (
@@ -39,16 +40,18 @@ export function Chat({ broadcastId }: { broadcastId: number }) {
           </li>
         ))}
       </ul>
-      {me ? (
-        <ChatForm broadcastId={broadcastId} />
-      ) : (
-        <p className="text-sm text-neutral-400">
-          <Link to="/login" className="text-emerald-400 hover:underline">
-            로그인
-          </Link>
-          하면 채팅할 수 있습니다.
-        </p>
-      )}
+      <div className="shrink-0 border-t border-neutral-800 p-3">
+        {me ? (
+          <ChatForm broadcastId={broadcastId} />
+        ) : (
+          <p className="text-sm text-neutral-400">
+            <Link to="/login" className="text-emerald-400 hover:underline">
+              로그인
+            </Link>
+            하면 채팅할 수 있습니다.
+          </p>
+        )}
+      </div>
     </section>
   )
 }
@@ -72,12 +75,12 @@ function ChatForm({ broadcastId }: { broadcastId: number }) {
           onChange={(e) => setContent(e.target.value)}
           maxLength={CHAT_MAX_LENGTH}
           placeholder="채팅을 입력하세요."
-          className="min-w-0 flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-emerald-500"
+          className="min-w-0 flex-1 rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-emerald-500"
         />
         <button
           type="submit"
           disabled={!content.trim() || post.isPending}
-          className="rounded-md bg-emerald-500 px-3 py-1.5 text-sm font-semibold text-neutral-950 disabled:opacity-50"
+          className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 disabled:opacity-50"
         >
           보내기
         </button>

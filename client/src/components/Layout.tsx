@@ -1,4 +1,4 @@
-import { Link, Outlet } from 'react-router'
+import { Link, Outlet, useLocation } from 'react-router'
 import { useLogout, useMe } from '../auth/auth'
 import { usePublishSession } from '../broadcast/publishSession'
 
@@ -6,11 +6,13 @@ export function Layout() {
   const { data: me } = useMe()
   const logout = useLogout()
   const publishing = usePublishSession()
+  // 방송 상세는 플레이어와 채팅으로 화면 폭을 다 쓰고, 넓은 화면에서는 창 높이에 맞춘다(채팅 칸이 창 높이만큼 선다).
+  const wide = /^\/broadcasts\/\d+$/.test(useLocation().pathname)
 
   return (
-    <div className="min-h-dvh bg-neutral-950 text-neutral-100">
-      <header className="border-b border-neutral-800">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
+    <div className={`flex min-h-dvh flex-col bg-neutral-950 text-neutral-100 ${wide ? 'lg:h-dvh' : ''}`}>
+      <header className="shrink-0 border-b border-neutral-800">
+        <div className={`mx-auto flex ${wide ? '' : 'max-w-5xl'} flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3`}>
           <nav className="flex items-center gap-3 text-sm whitespace-nowrap sm:gap-4">
             <Link to="/" className="text-lg font-bold tracking-tight text-emerald-400">
               FFLUX
@@ -53,7 +55,7 @@ export function Layout() {
           )}
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-8">
+      <main className={wide ? 'flex-1 lg:min-h-0' : 'mx-auto w-full max-w-5xl px-4 py-8'}>
         <Outlet />
       </main>
     </div>
