@@ -236,6 +236,69 @@ class CommentTest : BroadcastFlowTest() {
         assertNull(second["nextCursor"])
     }
 
+    @Test
+    fun `답글 수정과 삭제는 작성자만 하고 비로그인 401, 스트리머와 다른 회원 403`() {
+        val parentId = writeId(replay(), streamer, "원댓글")
+        val viewerReply = replyId(parentId, other, "시청자 답글")
+        val streamerReply = replyId(parentId, streamer, "스트리머 답글")
+
+        assertEquals(HttpStatus.UNAUTHORIZED, edit(viewerReply, null, "x").statusCode)
+        assertEquals(HttpStatus.UNAUTHORIZED, deleteComment(viewerReply, null).statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, edit(viewerReply, streamer, "x").statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, deleteComment(viewerReply, streamer).statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, edit(streamerReply, other, "x").statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, deleteComment(streamerReply, other).statusCode)
+        assertEquals(HttpStatus.NO_CONTENT, edit(viewerReply, other, "고친 답글").statusCode)
+        assertEquals(HttpStatus.NO_CONTENT, deleteComment(streamerReply, streamer).statusCode)
+    }
+
+    @Test
+    fun `지운 답글은 자리만 남고 답글 수와 댓글 수에서 빠지며 다시 고치거나 지우면 작성자 409, 다른 회원 403`() {
+        val id = replay()
+        val parentId = writeId(id, streamer, "원댓글")
+        val kept = replyId(parentId, other, "남는 답글")
+        val removed = replyId(parentId, other, "지울 답글")
+        edit(kept, other, "고친 답글")
+
+        assertEquals(HttpStatus.NO_CONTENT, deleteComment(removed, other).statusCode)
+
+        val page = comments(id, null).body!!
+        assertEquals(2, (page["count"] as Number).toInt())
+        assertEquals(1, (items(page).single()["replyCount"] as Number).toInt())
+        val (first, second) = items(replies(parentId, null).body!!)
+        assertEquals(true, first["edited"])
+        assertEquals(true, second["deleted"])
+        assertNull(second["content"])
+        assertNull(second["authorNickname"])
+        assertEquals(HttpStatus.CONFLICT, edit(removed, other, "x").statusCode)
+        assertEquals(HttpStatus.CONFLICT, deleteComment(removed, other).statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, edit(removed, streamer, "x").statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, deleteComment(removed, streamer).statusCode)
+    }
+
+    @Test
+    fun `원댓글을 지워도 답글은 남고 지운 원댓글에 새 답글을 달면 409`() {
+        val parentId = writeId(replay(), streamer, "원댓글")
+        replyId(parentId, other, "먼저 단 답글")
+
+        assertEquals(HttpStatus.NO_CONTENT, deleteComment(parentId, streamer).statusCode)
+
+        assertEquals(listOf("먼저 단 답글"), items(replies(parentId, null).body!!).map { it["content"] })
+        assertEquals(HttpStatus.CONFLICT, reply(parentId, other, "늦은 답글").statusCode)
+    }
+
+    @Test
+    fun `방송을 삭제하면 답글도 사라지고 고칠 수 없다`() {
+        val id = replay()
+        val parentId = writeId(id, streamer, "원댓글")
+        val replyId = replyId(parentId, other, "답글")
+
+        assertEquals(HttpStatus.NO_CONTENT, delete(id, streamer).statusCode)
+
+        assertEquals(emptyList<Any>(), replies(parentId, null).body!!["items"])
+        assertEquals(HttpStatus.NOT_FOUND, edit(replyId, other, "x").statusCode)
+    }
+
     // 헬퍼
 
     /** 녹화를 켜고 송출한 뒤 끝나 녹화가 READY가 된 방송(다시보기). */

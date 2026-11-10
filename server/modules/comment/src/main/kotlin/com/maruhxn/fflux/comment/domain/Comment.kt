@@ -86,9 +86,10 @@ class Comment protected constructor(
         fun write(broadcastId: Long, authorId: Long, authorNickname: String, content: CommentContent, now: LocalDateTime) =
             Comment(broadcastId, null, authorId, authorNickname, content, now)
 
-        /** [parent]에 다는 답글. 같은 방송에 달리고, 답글에는 답글을 달 수 없다(409). */
+        /** [parent]에 다는 답글. 같은 방송에 달리고, 답글이나 삭제된 댓글에는 달 수 없다(409). */
         fun reply(parent: Comment, authorId: Long, authorNickname: String, content: CommentContent, now: LocalDateTime): Comment {
             if (parent.parentId != null) throw ConflictException("답글에는 답글을 달 수 없습니다.")
+            if (parent.isDeleted()) throw ConflictException("삭제된 댓글에는 답글을 달 수 없습니다.")
             return Comment(parent.broadcastId, parent.id, authorId, authorNickname, content, now)
         }
     }

@@ -80,8 +80,11 @@ function CommentThread({ broadcastId, comment, memberId }: { broadcastId: number
   const [open, setOpen] = useState(false)
   // 작성 칸에 채울 글. 다른 글의 "답글"을 누르면 칸을 새로 연다(key).
   const [draft, setDraft] = useState<{ text: string; key: number } | null>(null)
+  // 삭제된 원댓글에는 답글을 달 수 없으므로(서버도 409) 그 아래 답글에서도 "답글"을 숨긴다.
   const replyTo =
-    memberId === null ? undefined : (target: Comment) => setDraft({ text: `@${target.authorNickname} `, key: Date.now() })
+    memberId === null || comment.deleted
+      ? undefined
+      : (target: Comment) => setDraft({ text: `@${target.authorNickname} `, key: Date.now() })
 
   return (
     <li className="py-3">

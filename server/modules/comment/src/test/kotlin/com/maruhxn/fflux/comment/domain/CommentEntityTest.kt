@@ -108,6 +108,13 @@ class CommentEntityTest {
         assertFailsWith<ConflictException> { Comment.reply(reply, AUTHOR, "작성자", CommentContent.of("고마워요"), now) }
     }
 
+    @Test
+    fun `삭제된 댓글에는 답글을 달 수 없어 409`() {
+        val parent = write().apply { delete(AUTHOR, now) }
+
+        assertFailsWith<ConflictException> { Comment.reply(parent, OTHER, "답글러", CommentContent.of("동감"), now) }
+    }
+
     companion object {
         private const val BROADCAST = 1L
         private const val AUTHOR = 10L
