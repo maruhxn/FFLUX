@@ -1,7 +1,19 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
+import { apiUrl } from '../api/client'
 import { useMe } from '../auth/auth'
-import { broadcastDetailKey, formatDateTime, formatViewerCount, useBroadcast, useDeleteBroadcast, type BroadcastStatus } from '../broadcast/broadcast'
+import {
+  broadcastDetailKey,
+  formatDateTime,
+  formatViewerCount,
+  useBroadcast,
+  useDeleteBroadcast,
+  useRecordingWait,
+  waitsForRecording,
+  type BroadcastDetail,
+  type BroadcastStatus,
+} from '../broadcast/broadcast'
 import { useBroadcastEvents } from '../broadcast/events'
 import { EndBroadcastButton } from '../components/EndBroadcastButton'
 import { LivePlayer } from '../components/LivePlayer'
@@ -14,7 +26,17 @@ const PLAYER_PLACEHOLDER: Record<BroadcastStatus, string> = {
   ENDED: '방송이 종료되었습니다',
 }
 
-/** 방송 상세. LIVE면 플레이어로 바로 보고, 방송이 시작·종료되거나 정보가 바뀌면 SSE로 바로 따라간다. */
+/** 플레이어를 그릴 수 없을 때 그 자리의 안내. 처리 중·실패 녹화는 스트리머에게만 온다. */
+function placeholderOf(broadcast: BroadcastDetail) {
+  if (broadcast.recording?.status === 'PROCESSING') return '녹화 처리 중'
+  if (broadcast.recording?.status === 'FAILED') return '녹화 처리 실패'
+  return PLAYER_PLACEHOLDER[broadcast.status]
+}
+
+/**
+ * 방송 상세. LIVE면 플레이어로 바로 보고, 방송이 시작·종료되거나 정보가 바뀌면 SSE로 바로 따라간다.
+ * 끝난 방송에 재생할 수 있는 녹화가 있으면 그 자리에서 다시보기를 재생한다.
+ */
 export function BroadcastDetailPage() {
   const id = Number(useParams().id)
   const navigate = useNavigate()
@@ -22,6 +44,10 @@ export function BroadcastDetailPage() {
   const { data: broadcast, error } = useBroadcast(id)
   // ENDED는 더 바뀌지 않으므로 구독하지 않는다.
   useBroadcastEvents(id, !!broadcast && broadcast.status !== 'ENDED')
+  // 끝난 뒤 녹화가 생기는 것은 다시 읽어 따라간다. 이 화면에서 LIVE를 봤는지는 방송 ID와 함께 기억한다.
+  const [sawLiveId, setSawLiveId] = useState<number | null>(null)
+  if (broadcast?.status === 'LIVE' && sawLiveId !== id) setSawLiveId(id)
+  useRecordingWait(id, !!broadcast && waitsForRecording(broadcast, sawLiveId === id))
   const remove = useDeleteBroadcast(id)
   const queryClient = useQueryClient()
 
@@ -44,9 +70,16 @@ export function BroadcastDetailPage() {
           // SSE가 막힌 네트워크에서도 방송이 끝나 끊긴 것이면 종료 화면으로 바뀌게 상세를 다시 읽는다.
           onDisconnect={() => void queryClient.invalidateQueries({ queryKey: broadcastDetailKey(id) })}
         />
+      ) : broadcast.status === 'ENDED' && broadcast.recording?.url ? (
+        <video
+          src={apiUrl(broadcast.recording.url)}
+          controls
+          playsInline
+          className="aspect-video w-full rounded-lg bg-black"
+        />
       ) : (
         <div className="flex aspect-video items-center justify-center rounded-lg bg-neutral-900 text-neutral-500">
-          {PLAYER_PLACEHOLDER[broadcast.status]}
+          {placeholderOf(broadcast)}
         </div>
       )}
       <div className="space-y-2">

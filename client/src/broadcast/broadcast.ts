@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { api } from '../api/client'
 import { endBroadcast } from './publishSession'
 
@@ -30,6 +31,14 @@ export function formatViewerCount(count: number) {
   return `${count.toLocaleString('ko-KR')}명`
 }
 
+/** 녹화 길이. 한 시간 미만은 `M:SS`, 이상은 `H:MM:SS`. */
+export function formatDuration(totalSeconds: number) {
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = String(totalSeconds % 60).padStart(2, '0')
+  return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${seconds}` : `${minutes}:${seconds}`
+}
+
 const BROADCASTS_KEY = ['broadcasts'] as const
 
 /** 목록 종류: 메인(LIVE), 지난 방송(ENDED), 내 방송(mine). */
@@ -50,10 +59,43 @@ export function useBroadcastList(kind: BroadcastListKind) {
   })
 }
 
-/** 상세. 시청 주소는 LIVE 방송에만 있다. */
-export type BroadcastDetail = Broadcast & { whepUrl: string | null; hlsUrl: string | null }
+export type RecordingStatus = 'PROCESSING' | 'READY' | 'FAILED'
+
+/** 녹화. [url]은 READY 녹화의 재생 주소(`/vod/...`)이고, 그 밖에는 null이다. */
+export type Recording = { status: RecordingStatus; url: string | null; durationSeconds: number | null }
+
+/**
+ * 상세. 시청 주소는 LIVE 방송에만 있다.
+ * [recording]은 READY면 모두에게, 처리 중·실패면 스트리머에게만 온다. 없거나 보이지 않으면 null이다.
+ */
+export type BroadcastDetail = Broadcast & { whepUrl: string | null; hlsUrl: string | null; recording: Recording | null }
 
 export const broadcastDetailKey = (id: number) => [...BROADCASTS_KEY, 'detail', id] as const
+
+/** 다시보기 목록의 항목. [startedAt]은 방송이 LIVE가 된 시각(방송 날짜)이다. */
+export type Replay = {
+  broadcastId: number
+  title: string
+  streamerNickname: string
+  durationSeconds: number | null
+  startedAt: string | null
+}
+
+type ReplayPage = { items: Replay[]; nextCursor: number | null }
+
+/** 다시보기 목록: 재생할 수 있는 녹화가 있는 끝난 방송, 최신순. */
+export function useReplayList() {
+  return useInfiniteQuery({
+    queryKey: [...BROADCASTS_KEY, 'replays'],
+    initialPageParam: null as number | null,
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams()
+      if (pageParam !== null) params.set('cursor', String(pageParam))
+      return api<ReplayPage>(`/api/replays?${params}`)
+    },
+    getNextPageParam: (last) => last.nextCursor,
+  })
+}
 
 /** 상세. 상태·제목 변화를 따라가려면 `useBroadcastEvents`를 함께 쓴다. */
 export function useBroadcast(id: number) {
@@ -61,6 +103,37 @@ export function useBroadcast(id: number) {
     queryKey: broadcastDetailKey(id),
     queryFn: () => api<BroadcastDetail>(`/api/broadcasts/${id}`),
   })
+}
+
+/**
+ * 끝난 방송의 녹화를 기다리며 상세를 다시 읽을지. 녹화는 방송이 끝난 뒤 리먹싱 훅의 통지로 생기므로 종료 직후에는 아직 없을 수 있다.
+ * 시청자에게는 처리 중인 녹화가 보이지 않으므로(null) 녹화하지 않은 방송과 구분할 수 없어, 이 화면에서 LIVE를 본([sawLive]) 방송만 기다린다.
+ */
+export function waitsForRecording(detail: BroadcastDetail, sawLive: boolean) {
+  if (detail.status !== 'ENDED') return false
+  return detail.recording === null ? sawLive : detail.recording.status === 'PROCESSING'
+}
+
+const RECORDING_POLL_MS = 5_000
+/** 이만큼 기다려도 녹화가 나오지 않으면 그만 읽는다(녹화하지 않은 방송이거나 훅이 통지하지 못했다). */
+const RECORDING_WAIT_MS = 5 * 60_000
+
+/** [waiting]인 동안 상세를 주기적으로 다시 읽는다. 끝난 방송은 SSE를 구독하지 않으므로 녹화 상태 변화는 이렇게 따라간다. */
+export function useRecordingWait(id: number, waiting: boolean) {
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    if (!waiting) return
+    const poll = setInterval(
+      () => void queryClient.invalidateQueries({ queryKey: broadcastDetailKey(id) }),
+      RECORDING_POLL_MS,
+    )
+    const giveUp = setTimeout(() => clearInterval(poll), RECORDING_WAIT_MS)
+    return () => {
+      clearInterval(poll)
+      clearTimeout(giveUp)
+    }
+  }, [id, waiting, queryClient])
 }
 
 /** 빈 설명은 서버가 없음으로 저장한다. */
