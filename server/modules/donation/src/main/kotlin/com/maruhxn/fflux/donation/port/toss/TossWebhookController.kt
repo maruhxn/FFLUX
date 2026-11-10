@@ -24,6 +24,7 @@ class TossWebhookController(
     @PostMapping
     fun receive(@RequestBody(required = false) request: TossWebhookRequest?): ResponseEntity<Unit> {
         val paymentKey = request?.data?.paymentKey
+        log.info("토스 웹훅 수신: eventType={}", request?.eventType)
         when {
             request?.eventType != PAYMENT_STATUS_CHANGED -> log.info("토스 웹훅: 받지 않는 이벤트 {}", request?.eventType)
             paymentKey.isNullOrBlank() -> log.warn("토스 웹훅: 결제 키 없음")
