@@ -44,10 +44,11 @@ export function BroadcastDetailPage() {
   const { data: broadcast, error } = useBroadcast(id)
   // ENDED는 더 바뀌지 않으므로 구독하지 않는다.
   useBroadcastEvents(id, !!broadcast && broadcast.status !== 'ENDED')
-  // 끝난 뒤 녹화가 생기는 것은 다시 읽어 따라간다. 이 화면에서 LIVE를 봤는지는 방송 ID와 함께 기억한다.
+  // 스트리머 화면은 끝난 뒤 녹화 처리를 다시 읽어 따라간다. 이 화면에서 LIVE를 봤는지는 방송 ID와 함께 기억한다.
   const [sawLiveId, setSawLiveId] = useState<number | null>(null)
   if (broadcast?.status === 'LIVE' && sawLiveId !== id) setSawLiveId(id)
-  useRecordingWait(id, !!broadcast && waitsForRecording(broadcast, sawLiveId === id))
+  const streamerSawLive = sawLiveId === id && !!broadcast && me?.memberId === broadcast.streamerId
+  useRecordingWait(id, !!broadcast && waitsForRecording(broadcast, streamerSawLive))
   const remove = useDeleteBroadcast(id)
   const queryClient = useQueryClient()
 

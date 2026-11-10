@@ -106,12 +106,13 @@ export function useBroadcast(id: number) {
 }
 
 /**
- * 끝난 방송의 녹화를 기다리며 상세를 다시 읽을지. 녹화는 방송이 끝난 뒤 리먹싱 훅의 통지로 생기므로 종료 직후에는 아직 없을 수 있다.
- * 시청자에게는 처리 중인 녹화가 보이지 않으므로(null) 녹화하지 않은 방송과 구분할 수 없어, 이 화면에서 LIVE를 본([sawLive]) 방송만 기다린다.
+ * 끝난 방송의 녹화를 기다리며 상세를 다시 읽을지. 처리 중인 녹화는 스트리머에게만 오므로 스트리머 화면만 기다린다.
+ * 시청자는 치지직처럼 종료 화면에 머물고, 처리가 끝난 다시보기는 다시보기 목록에서 찾는다.
+ * 녹화는 방송이 끝난 뒤 리먹싱 훅의 통지로 생겨 종료 직후에는 아직 없을 수 있으므로, LIVE를 지켜본 스트리머([streamerSawLive])는 그때도 기다린다.
  */
-export function waitsForRecording(detail: BroadcastDetail, sawLive: boolean) {
+export function waitsForRecording(detail: BroadcastDetail, streamerSawLive: boolean) {
   if (detail.status !== 'ENDED') return false
-  return detail.recording === null ? sawLive : detail.recording.status === 'PROCESSING'
+  return detail.recording === null ? streamerSawLive : detail.recording.status === 'PROCESSING'
 }
 
 const RECORDING_POLL_MS = 5_000

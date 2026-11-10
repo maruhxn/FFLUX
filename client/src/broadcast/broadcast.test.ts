@@ -32,11 +32,11 @@ describe('waitsForRecording', () => {
     expect(waitsForRecording(detail('ENDED', processing), false)).toBe(true)
   })
 
-  it('이 화면에서 LIVE를 본 방송이 끝났는데 녹화가 아직 보이지 않으면 기다린다', () => {
+  it('LIVE를 지켜본 스트리머의 방송이 끝났는데 녹화가 아직 오지 않았으면 기다린다', () => {
     expect(waitsForRecording(detail('ENDED', null), true)).toBe(true)
   })
 
-  it('끝난 뒤에 연 방송에 녹화가 보이지 않으면 녹화하지 않은 방송으로 보고 기다리지 않는다', () => {
+  it('녹화가 보이지 않으면 시청자이거나 끝난 뒤에 연 화면이므로 기다리지 않는다', () => {
     expect(waitsForRecording(detail('ENDED', null), false)).toBe(false)
   })
 
