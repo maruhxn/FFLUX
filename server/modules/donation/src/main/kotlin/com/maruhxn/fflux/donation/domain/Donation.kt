@@ -94,8 +94,12 @@ class Donation protected constructor(
 
     /** 결제사가 승인한 결제가 이 후원의 것(같은 주문, 같은 금액)인지 본다. 아니면 409. */
     fun checkPayment(orderId: String, paid: Boolean, totalAmount: Long) {
-        if (orderId != this.orderId || !paid || totalAmount != amount.value) throw ConflictException("결제 정보가 후원 요청과 다릅니다.")
+        if (!isPaidBy(orderId, paid, totalAmount)) throw ConflictException("결제 정보가 후원 요청과 다릅니다.")
     }
+
+    /** 결제사의 결제가 이 후원을 승인 완료한 결제(같은 주문, 같은 금액)인지. */
+    fun isPaidBy(orderId: String, paid: Boolean, totalAmount: Long): Boolean =
+        orderId == this.orderId && paid && totalAmount == amount.value
 
     companion object {
         /** 자기 방송이면 403, 후원할 수 없는 상태([donatable]이 false)의 방송이면 409. */

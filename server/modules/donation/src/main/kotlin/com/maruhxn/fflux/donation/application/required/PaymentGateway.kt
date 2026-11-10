@@ -5,8 +5,8 @@ interface PaymentGateway {
     /** 결제창에서 인증된 결제를 [amount]원으로 승인한다. */
     fun confirm(paymentKey: String, orderId: String, amount: Long): PaymentApproval
 
-    /** 결제를 조회한다. */
-    fun find(paymentKey: String): Payment
+    /** 결제를 조회한다. 결제사에 그런 결제가 없거나 결제 키 형식이 틀리면 null. */
+    fun find(paymentKey: String): Payment?
 }
 
 sealed interface PaymentApproval {

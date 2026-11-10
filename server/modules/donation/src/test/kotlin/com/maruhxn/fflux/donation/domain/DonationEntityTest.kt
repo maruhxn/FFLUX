@@ -7,6 +7,7 @@ import java.time.LocalDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -91,6 +92,16 @@ class DonationEntityTest {
         assertFailsWith<ConflictException> { donation.checkPayment("order-2", paid = true, totalAmount = 5_000) }
         assertFailsWith<ConflictException> { donation.checkPayment(ORDER, paid = false, totalAmount = 5_000) }
         assertFailsWith<ConflictException> { donation.checkPayment(ORDER, paid = true, totalAmount = 1_000) }
+    }
+
+    @Test
+    fun `웹훅으로 받은 결제는 같은 주문을 같은 금액으로 승인했을 때만 이 후원의 결제로 본다`() {
+        val donation = request()
+
+        assertTrue(donation.isPaidBy(ORDER, paid = true, totalAmount = 5_000))
+        assertFalse(donation.isPaidBy("order-2", paid = true, totalAmount = 5_000))
+        assertFalse(donation.isPaidBy(ORDER, paid = false, totalAmount = 5_000))
+        assertFalse(donation.isPaidBy(ORDER, paid = true, totalAmount = 1_000))
     }
 
     companion object {

@@ -4,6 +4,7 @@ import com.maruhxn.fflux.donation.application.required.Payment
 import com.maruhxn.fflux.donation.application.required.PaymentApproval
 import com.maruhxn.fflux.donation.application.required.PaymentGateway
 import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.stereotype.Component
@@ -45,11 +46,15 @@ class TossPaymentsClient(properties: TossPaymentsProperties) : PaymentGateway {
                 }
             }
 
-    override fun find(paymentKey: String): Payment =
+    override fun find(paymentKey: String): Payment? =
         restClient.get().uri("/v1/payments/{paymentKey}", paymentKey)
             .exchange { _, response ->
-                if (!response.statusCode.is2xxSuccessful) error("토스 결제 조회 실패: ${response.statusCode}")
-                response.bodyTo(TossPayment::class.java).toPayment()
+                when {
+                    response.statusCode.is2xxSuccessful -> response.bodyTo(TossPayment::class.java).toPayment()
+                    // 없는 결제 키(NOT_FOUND_PAYMENT)이거나 형식이 틀린 키다. 키 설정 오류(401·403)나 한도 초과(429)는 오류로 둔다.
+                    response.statusCode == HttpStatus.NOT_FOUND || response.statusCode == HttpStatus.BAD_REQUEST -> null
+                    else -> error("토스 결제 조회 실패: ${response.statusCode}")
+                }
             }
 
     private fun TossPayment?.toPayment(): Payment {

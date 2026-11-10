@@ -27,11 +27,11 @@ class FakePaymentGateway : PaymentGateway {
         return if (payments.putIfAbsent(paymentKey, payment) == null) PaymentApproval.Approved(payment) else PaymentApproval.AlreadyProcessed
     }
 
-    override fun find(paymentKey: String): Payment = payments[paymentKey] ?: error("없는 결제(테스트): $paymentKey")
+    override fun find(paymentKey: String): Payment? = payments[paymentKey]
 
-    /** 우리 서버가 응답을 받지 못한 채 토스에서 이미 승인된 결제를 만든다. */
-    fun approvedElsewhere(paymentKey: String, orderId: String, amount: Long) {
-        payments[paymentKey] = Payment(paymentKey, orderId, paid = true, amount)
+    /** 우리 서버가 응답을 받지 못한 채 토스에 있는 결제를 만든다. [paid]가 false면 승인 완료가 아닌 결제다. */
+    fun approvedElsewhere(paymentKey: String, orderId: String, amount: Long, paid: Boolean = true) {
+        payments[paymentKey] = Payment(paymentKey, orderId, paid, amount)
     }
 
     fun reset() {

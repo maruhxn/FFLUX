@@ -14,6 +14,12 @@ interface DonationProcessor {
      */
     fun confirm(command: ConfirmDonationCommand): DonationResult
 
+    /**
+     * 결제사 웹훅이 알린 결제를 결제 조회 API로 확인해, 승인 완료이고 후원과 맞으면 DONE으로 만든다. 웹훅 본문은 믿지 않는다.
+     * 결제사에 없는 결제, 모르는 주문, 후원과 다른 결제, 취소된 후원은 확정하지 않고 로그만 남긴다(예외를 던지지 않는다).
+     */
+    fun confirmByWebhook(paymentKey: String)
+
     /** 결제창에서 실패·취소해 돌아오면 CANCELED로 만든다. 이미 CANCELED면 그대로 성공한다. 없으면 404, 후원자가 아니면 403, DONE이면 409. */
     fun cancel(orderId: String, memberId: Long): DonationResult
 }

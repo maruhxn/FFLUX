@@ -164,4 +164,15 @@ docker compose -f infra/compose.yml down
    - 클라이언트 키가 비어 있으면 후원 패널이 "결제 설정이 없어 지금은 후원할 수 없습니다"를 띄우고, 시크릿 키가 비어 있으면 결제 승인이 거절된다(409).
 5. 확인: 다른 계정의 LIVE 방송 상세에서 "후원하기" → 금액·메시지 → 결제위젯에서 카드 결제(테스트 모드라 카드 정보 없이 진행되거나 아무 값이나 통과한다) → 성공 페이지에 "후원했습니다"가 뜨고 DB `donation.status`가 `DONE`이 된다. 결제가 실패하면 실패 페이지가 뜨고 `CANCELED`가 된다. 결제창을 그냥 닫으면 토스가 주문 ID를 주지 않아 `PENDING`으로 남는다(내역·합계는 `DONE`만 센다).
 
-successUrl·failUrl은 프론트 출처(`/donations/success`, `/donations/fail`)라 개발자센터에 따로 등록하지 않는다. 웹훅 등록은 #22에서 다룬다.
+successUrl·failUrl은 프론트 출처(`/donations/success`, `/donations/fail`)라 개발자센터에 따로 등록하지 않는다.
+
+### 웹훅 등록 (#22)
+
+결제 뒤 돌아오는 확정이 유실돼도(브라우저를 닫음, 응답 유실) 토스 결제 상태 웹훅으로 후원을 확정한다. 서버는 웹훅 본문을 믿지 않고 `paymentKey`로 결제 조회 API를 불러 승인 완료·주문·금액을 확인한 뒤 확정한다. 처리할 수 없는 건(모르는 주문, 위조 본문)도 200으로 응답하고 로그(`토스 웹훅:`)만 남긴다.
+
+1. 개발자센터 [웹훅] 메뉴 → **테스트** 탭 → 웹훅 등록.
+2. 구독할 이벤트는 `PAYMENT_STATUS_CHANGED` 하나만 고른다.
+3. URL
+   - 실서버: `https://api.fflux.kro.kr/api/webhooks/toss` (VM이 켜져 있어야 한다. 꺼져 있으면 토스가 실패로 보고 재전송한다)
+   - 로컬: Spring(bootRun)에 터널을 연다. `cloudflared tunnel --url http://localhost:8080` → `https://<랜덤>.trycloudflare.com/api/webhooks/toss`. 터널 주소는 실행마다 바뀌므로 확인이 끝나면 지우거나 실서버 주소로 돌려 둔다.
+4. 확인: 테스트 결제를 한 번 하고 서버 로그에 웹훅 요청(`/api/webhooks/toss`)이 200으로 남는지 본다. 결제 뒤 돌아오는 확정이 먼저 끝났으면 웹훅은 이미 DONE이라 바꾸는 것 없이 성공한다. 개발자센터 웹훅 목록의 전송 기록에서도 성공 여부를 볼 수 있다.
