@@ -16,6 +16,7 @@ import {
 } from '../broadcast/broadcast'
 import { useBroadcastEvents } from '../broadcast/events'
 import { useDonationAlerts } from '../donation/donations'
+import { Chat } from '../components/Chat'
 import { Comments } from '../components/Comments'
 import { Donation } from '../components/Donation'
 import { DonationHistory } from '../components/DonationHistory'
@@ -142,6 +143,8 @@ export function BroadcastDetailPage() {
         </div>
       )}
       {remove.error && <p className="text-sm text-red-400">{remove.error.message}</p>}
+      {/* 채팅은 LIVE 방송에만 있다. 다시보기에는 보여 주지 않는다. */}
+      {broadcast.status === 'LIVE' && <Chat broadcastId={broadcast.id} />}
       {/* 후원은 LIVE·ENDED 방송의 스트리머에게 한다. */}
       {broadcast.status !== 'READY' && (
         <>

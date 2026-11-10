@@ -8,5 +8,6 @@ include(
     "modules:realtime",
     "modules:recording",
     "modules:comment",
+    "modules:chat",
     "modules:donation",
 )
