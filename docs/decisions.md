@@ -16,7 +16,9 @@
 - `/internal/*`은 Caddy에서 라우팅하지 않고, Spring 8080 포트는 호스트에 publish하지 않는다(네트워크 격리로 내부 API 보호).
 - WebRTC 미디어 포트 UDP/TCP 8189를 VM에서 직접 개방. TURN 없이 시작하고, VM 배포 후 LTE 확인에서 실패하면 coturn 추가.
   - 2026-11-09 VM 첫 배포에서 PC 송출 → 휴대폰 LTE 시청, 휴대폰 LTE 카메라 송출 → PC 시청이 모두 WebRTC로 연결됐다. coturn은 넣지 않는다.
-- 비밀값은 VM `.env`에만 두고 저장소에는 `.env.example`만 커밋.
+- 운영 비밀값은 GitHub Actions Secrets, 그 밖의 운영 설정은 Variables에 두고, CD가 배포마다 VM `.env`를 새로 쓴다. 저장소에는 `.env.example`만 커밋.
+  - 처음엔 VM `.env`를 사람이 직접 고쳤으나, 키를 바꿀 때마다 VM에 들어가야 해서 CI/CD로 자동 반영하게 바꿨다(2026-11-10). 값만 바꿨을 때는 CD를 수동 실행한다.
+  - MySQL 비밀번호는 데이터 볼륨을 처음 만들 때만 적용되므로 Secrets의 값을 바꿔도 DB 계정 비밀번호는 바뀌지 않는다. 바꾸려면 DB에서 계정 비밀번호를 먼저 바꾼다.
 - 개발 단계 비용을 줄이려고 개발은 로컬에서 한다. 같은 Docker Compose 스택을 PC에 띄우고, 휴대폰 접속용 HTTPS는 무료 터널(Cloudflare Quick Tunnel 또는 ngrok)로 붙인다.
   - 터널은 HTTP만 전달하므로 WHIP/WHEP 시그널링과 HLS는 터널로, WebRTC 미디어는 같은 와이파이에서 PC 내부 IP(`webrtcAdditionalHosts`)로 직접 연결한다.
   - 로컬에서는 같은 와이파이의 WebRTC 송출·시청과 LTE의 HLS 시청까지만 확인한다. LTE의 WebRTC 시청과 TURN 필요 여부는 VM 배포 단계에서 확인한다.

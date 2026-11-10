@@ -26,5 +26,5 @@ paths:
 - 개발은 로컬 Docker Compose + HTTPS 터널(Cloudflare Quick Tunnel 또는 ngrok)로 한다. 터널은 HTTP만 전달하므로 WebRTC 미디어는 같은 와이파이에서 PC 내부 IP로 연결된다(`webrtcAdditionalHosts`에 PC 내부 IP). LTE의 WebRTC 확인은 VM에서 한다.
 - VM은 GCP 신규 크레딧(90일)으로 운영하고, 평가가 끝날 때까지 켜 둔다.
 - TURN 없이 운영한다. 실기기에서 연결이 실패할 때만 coturn을 추가한다.
-- 비밀값은 VM `.env`로만 주입한다. 새 변수는 `.env.example`에 추가한다.
+- 운영 환경변수는 GitHub Actions Secrets(비밀번호·결제 시크릿 키)와 Variables(도메인·출처 등 비밀이 아닌 운영 설정)에 둔다. CD가 배포마다 이 값으로 VM `/opt/fflux/.env`를 새로 쓰므로(권한 600) VM에서 직접 고치지 않는다. 값만 바꿨으면 CD를 수동 실행(`workflow_dispatch`)한다. 새 변수는 `.env.example`과 `cd.yml`의 `.env` 생성 단계에 함께 추가한다.
 - CI(`.github/workflows/ci.yml`, 검사)와 CD(`cd.yml`, 배포)를 나눈다. CD는 `main`의 CI가 성공한 뒤 돈다: 마지막 성공 CD 이후 서버·인프라·`cd.yml` 변경이면 Spring 이미지를 GHCR에 올리고 VM(`/opt/fflux`)을 그 커밋으로 체크아웃해 `docker compose pull app && docker compose up -d`. VM에서 이미지를 빌드하지 않는다. GCP 인증은 Workload Identity Federation(장기 키 금지), VM 접속은 IAP 터널 SSH(OS Login).

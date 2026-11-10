@@ -1,5 +1,6 @@
 # CD: main의 CI가 성공하면, 마지막으로 성공한 CD 이후 서버·인프라가 바뀐 경우에만 VM(api.fflux.kro.kr)에 배포한다.
 # Spring 이미지를 GHCR에 올리고 VM은 받아서 띄우기만 한다. 프론트(fflux.kro.kr)는 Vercel이 따로 배포한다.
+# VM의 .env는 배포마다 GitHub Actions Secrets·Variables로 새로 쓴다. 값만 바꿨으면 수동 실행(workflow_dispatch)으로 반영한다.
 name: CD
 
 on:
@@ -7,6 +8,7 @@ on:
     workflows: [CI]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
 
 # 배포는 겹치지 않게 하나씩. 진행 중인 배포는 취소하지 않는다.
 concurrency:
@@ -17,17 +19,19 @@ permissions:
   contents: read
 
 env:
-  SHA: ${{ github.event.workflow_run.head_sha }}
+  # 수동 실행은 main의 최신 커밋을 배포한다.
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
   changes:
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     permissions:
       contents: read
       actions: read
     outputs:
-      deploy: ${{ steps.first.outputs.deploy || steps.filter.outputs.deploy }}
+      # 수동 실행은 바뀐 파일과 상관없이 배포한다(Secrets만 바꾼 경우).
+      deploy: ${{ github.event_name == 'workflow_dispatch' || steps.first.outputs.deploy || steps.filter.outputs.deploy }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -89,6 +93,33 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v3
+      # 비밀값은 Secrets, 그 밖의 운영 설정은 Variables에 둔다. 러너에서 .env를 만들어 SSH 표준 입력으로 VM에 쓰므로 값이 명령줄·로그에 남지 않는다.
+      # compose가 반드시 요구하는 값이 비어 있으면 VM을 건드리기 전에 멈춘다. 새 환경변수는 .env.example과 여기에 함께 추가한다.
+      - name: VM .env 갱신
+        env:
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          TEST_STREAMER_PASSWORD: ${{ secrets.TEST_STREAMER_PASSWORD }}
+          TEST_VIEWER_PASSWORD: ${{ secrets.TEST_VIEWER_PASSWORD }}
+          TOSS_SECRET_KEY: ${{ secrets.TOSS_SECRET_KEY }}
+          DOMAIN: ${{ vars.DOMAIN }}
+          ACME_EMAIL: ${{ vars.ACME_EMAIL }}
+          CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
+          WEBRTC_ADDITIONAL_HOSTS: ${{ vars.WEBRTC_ADDITIONAL_HOSTS }}
+          TEST_ACCOUNTS_ENABLED: ${{ vars.TEST_ACCOUNTS_ENABLED }}
+        run: |
+          : "${MYSQL_PASSWORD:?Secrets에 MYSQL_PASSWORD가 없다}" "${MYSQL_ROOT_PASSWORD:?Secrets에 MYSQL_ROOT_PASSWORD가 없다}"
+          : "${DOMAIN:?Variables에 DOMAIN이 없다}" "${ACME_EMAIL:?Variables에 ACME_EMAIL이 없다}"
+          : "${CORS_ALLOWED_ORIGINS:?Variables에 CORS_ALLOWED_ORIGINS가 없다}" "${WEBRTC_ADDITIONAL_HOSTS:?Variables에 WEBRTC_ADDITIONAL_HOSTS가 없다}"
+          umask 077
+          for key in MYSQL_PASSWORD MYSQL_ROOT_PASSWORD TEST_STREAMER_PASSWORD TEST_VIEWER_PASSWORD TOSS_SECRET_KEY \
+            DOMAIN ACME_EMAIL CORS_ALLOWED_ORIGINS WEBRTC_ADDITIONAL_HOSTS TEST_ACCOUNTS_ENABLED; do
+            printf '%s=%s\n' "$key" "${!key}"
+          done > "$RUNNER_TEMP/fflux.env"
+          gcloud compute ssh fflux --project=fflux-maruhxn --zone=asia-northeast3-a --tunnel-through-iap --quiet \
+            --command="sudo sh -c 'umask 077 && cat > /opt/fflux/.env'" < "$RUNNER_TEMP/fflux.env"
+          rm -f "$RUNNER_TEMP/fflux.env"
+
       # VM 저장소를 이 커밋에 맞춰(compose·infra와 앱 이미지가 같은 커밋) 그 커밋의 이미지로 다시 띄운다.
       - name: VM에 배포
         run: |

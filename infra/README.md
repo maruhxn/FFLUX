@@ -158,7 +158,7 @@ docker compose -f infra/compose.yml down
 1. [토스페이먼츠 개발자센터](https://developers.tosspayments.com)에 이메일로 가입·로그인한다. 가입만 하면 **개발 연동 체험 상점**이 생긴다. 전자결제 이용 신청(사업자 등록 필요)은 하지 않는다.
 2. [API 키] 메뉴의 **API 개별 연동 키**(클라이언트 키 `test_ck_`, 시크릿 키 `test_sk_`)를 쓴다. 같은 화면의 주문서형·결제창형 연동 키(결제위젯 연동 키)는 이용 신청 전에는 문서용 공용 키(`test_gck_docs_…`)만 나오고, 공용 키 결제는 공용 상점 소속이라 내 계정의 테스트 결제내역과 웹훅이 동작하지 않아 쓰지 않는다. 보안 키도 쓰지 않는다.
 3. 키를 넣는다.
-   - **시크릿 키**: 서버 환경변수 `TOSS_SECRET_KEY`. VM은 저장소 루트 `.env`, 로컬 bootRun은 `server/.env`에 넣는다. 저장소에는 넣지 않는다. VM은 넣은 뒤 `docker compose up -d app`으로 다시 띄운다.
+   - **시크릿 키**: 서버 환경변수 `TOSS_SECRET_KEY`. 운영은 GitHub Actions Secrets에 넣고 CD를 수동 실행하면 VM `.env`에 반영된다. 로컬 bootRun은 `server/.env`에 넣는다. 저장소에는 넣지 않는다.
    - **클라이언트 키**: 프론트 빌드 환경변수 `VITE_TOSS_CLIENT_KEY`. 비밀값이 아니라 운영 값은 `client/.env.production`에 저장소째 둔다. 로컬은 `client/.env.local`에 넣는다(`client/.env.example` 참고).
    - 클라이언트 키가 비어 있으면 후원 패널이 "결제 설정이 없어 지금은 후원할 수 없습니다"를 띄우고, 시크릿 키가 비어 있으면 결제 승인이 거절된다(409).
    - 시크릿 키를 바꾸면(재발급) 클라이언트 키는 그대로이고 시크릿 키만 다시 넣는다.
