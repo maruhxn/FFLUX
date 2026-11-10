@@ -7,6 +7,7 @@ import './index.css'
 import { BroadcastDetailPage } from './pages/BroadcastDetailPage'
 import { BroadcastEditPage, BroadcastNewPage } from './pages/BroadcastFormPage'
 import { BroadcastPublishPage } from './pages/BroadcastPublishPage'
+import { DonationFailPage, DonationSuccessPage } from './pages/DonationResultPage'
 import { EndedBroadcastsPage } from './pages/EndedBroadcastsPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
@@ -30,6 +31,8 @@ const router = createBrowserRouter([
       { path: '/broadcasts/:id/edit', element: <BroadcastEditPage /> },
       { path: '/broadcasts/:id/publish', element: <BroadcastPublishPage /> },
       { path: '/me/broadcasts', element: <MyBroadcastsPage /> },
+      { path: '/donations/success', element: <DonationSuccessPage /> },
+      { path: '/donations/fail', element: <DonationFailPage /> },
     ],
   },
 ])

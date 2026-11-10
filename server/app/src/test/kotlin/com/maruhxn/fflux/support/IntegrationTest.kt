@@ -22,7 +22,7 @@ import org.springframework.web.client.RestClient
         "fflux.cors.allowed-origins=$TEST_FRONT_ORIGIN",
     ],
 )
-@Import(TestcontainersConfiguration::class, TestClockConfiguration::class, FakeMediaPublisherKickerConfiguration::class)
+@Import(TestcontainersConfiguration::class, TestClockConfiguration::class, FakeMediaPublisherKickerConfiguration::class, FakePaymentGatewayConfiguration::class)
 abstract class IntegrationTest {
 
     @LocalServerPort
@@ -40,6 +40,9 @@ abstract class IntegrationTest {
     @Autowired
     protected lateinit var hub: BroadcastEventHub
 
+    @Autowired
+    protected lateinit var paymentGateway: FakePaymentGateway
+
     protected lateinit var http: RestClient
 
     @BeforeEach
@@ -47,6 +50,7 @@ abstract class IntegrationTest {
         databaseCleaner.clean()
         clock.reset()
         kicker.reset()
+        paymentGateway.reset()
         // 방송 ID가 테이블을 비울 때마다 다시 시작하므로, 앞 테스트에서 끊긴 구독이 같은 ID에 남아 시청자 수에 섞이지 않게 비운다.
         hub.completeAll()
         http = RestClient.builder()

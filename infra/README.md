@@ -150,3 +150,18 @@ docker compose -f infra/compose.yml down
 - **Chrome 자동 재생 차단**: 재생 버튼을 한 번 더 누른다.
 - **녹화 파일**: 원본은 `infra/data/recordings`, 재생용은 `infra/data/vod`. 지우려면 스택을 내린 뒤 `infra/data`를 지운다.
 - **MediaMTX 버전**: `latest-ffmpeg` 태그를 쓴다(스파이크 시점 v1.21.3). 방송 상태 전이 훅은 `runOnAvailable`/`runOnUnavailable`을 쓴다(옛 이름 `runOnReady`/`runOnNotReady`는 이 버전 설정에 없다).
+
+## 토스페이먼츠 테스트 키 (후원, #21)
+
+후원 결제는 토스페이먼츠 **테스트 모드**의 결제위젯을 쓴다. 테스트 키로는 실제 돈이 나가지 않는다. 키 발급과 등록은 사람이 한다.
+
+1. [토스페이먼츠 개발자센터](https://developers.tosspayments.com)에 가입·로그인한다.
+2. [API 키] 메뉴에서 **결제위젯 연동 키**(주문서형)를 확인한다. 클라이언트 키는 `test_gck_`, 시크릿 키는 `test_gsk_`로 시작한다. API 개별 연동 키(`test_ck_`·`test_sk_`)가 아니다.
+3. 결제위젯 어드민에서 결제 UI(`DEFAULT`)와 약관 UI(`AGREEMENT`)가 있는지 본다. 처음 만든 상점에는 기본으로 있다.
+4. 키를 넣는다.
+   - **시크릿 키**: 서버 환경변수 `TOSS_SECRET_KEY`. VM은 저장소 루트 `.env`, 로컬 bootRun은 `server/.env`에 넣는다. 저장소에는 넣지 않는다. VM은 넣은 뒤 `docker compose up -d app`으로 다시 띄운다.
+   - **클라이언트 키**: 프론트 빌드 환경변수 `VITE_TOSS_CLIENT_KEY`. 비밀값이 아니다. Vercel 프로젝트의 Environment Variables에 넣고 다시 배포한다. 로컬은 `client/.env.local`에 넣는다(gitignore됨).
+   - 클라이언트 키가 비어 있으면 후원 패널이 "결제 설정이 없어 지금은 후원할 수 없습니다"를 띄우고, 시크릿 키가 비어 있으면 결제 승인이 거절된다(409).
+5. 확인: 다른 계정의 LIVE 방송 상세에서 "후원하기" → 금액·메시지 → 결제위젯에서 카드 결제(테스트 모드라 카드 정보 없이 진행되거나 아무 값이나 통과한다) → 성공 페이지에 "후원했습니다"가 뜨고 DB `donation.status`가 `DONE`이 된다. 결제가 실패하면 실패 페이지가 뜨고 `CANCELED`가 된다. 결제창을 그냥 닫으면 토스가 주문 ID를 주지 않아 `PENDING`으로 남는다(내역·합계는 `DONE`만 센다).
+
+successUrl·failUrl은 프론트 출처(`/donations/success`, `/donations/fail`)라 개발자센터에 따로 등록하지 않는다. 웹훅 등록은 #22에서 다룬다.
