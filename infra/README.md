@@ -155,12 +155,12 @@ docker compose -f infra/compose.yml down
 
 후원 결제는 토스페이먼츠 **테스트 모드**의 결제위젯을 쓴다. 테스트 키로는 실제 돈이 나가지 않는다. 키 발급과 등록은 사람이 한다.
 
-1. [토스페이먼츠 개발자센터](https://developers.tosspayments.com)에 가입·로그인한다.
-2. [API 키] 메뉴에서 **결제위젯 연동 키**(주문서형)를 확인한다. 클라이언트 키는 `test_gck_`, 시크릿 키는 `test_gsk_`로 시작한다. API 개별 연동 키(`test_ck_`·`test_sk_`)가 아니다.
-3. 결제위젯 어드민에서 결제 UI(`DEFAULT`)와 약관 UI(`AGREEMENT`)가 있는지 본다. 처음 만든 상점에는 기본으로 있다.
+1. [토스페이먼츠 개발자센터](https://developers.tosspayments.com)에 가입·로그인한다. 전자결제 이용 신청(사업자 등록 필요)은 하지 않는다.
+2. [API 키] 메뉴의 **주문서형·결제창형 연동 키**(결제위젯 연동 키)를 쓴다. 이용 신청 전에는 문서 예제와 같은 공용 테스트 키(`test_gck_docs_…`, `test_gsk_docs_…`)가 보이고, 이 키로 테스트 결제가 된다. 같은 화면의 API 개별 연동 키(`test_ck_`·`test_sk_`)와 보안 키는 쓰지 않는다.
+3. 결제 UI(`DEFAULT`)와 약관 UI(`AGREEMENT`)는 기본으로 있다.
 4. 키를 넣는다.
    - **시크릿 키**: 서버 환경변수 `TOSS_SECRET_KEY`. VM은 저장소 루트 `.env`, 로컬 bootRun은 `server/.env`에 넣는다. 저장소에는 넣지 않는다. VM은 넣은 뒤 `docker compose up -d app`으로 다시 띄운다.
-   - **클라이언트 키**: 프론트 빌드 환경변수 `VITE_TOSS_CLIENT_KEY`. 비밀값이 아니다. Vercel 프로젝트의 Environment Variables에 넣고 다시 배포한다. 로컬은 `client/.env.local`에 넣는다(gitignore됨).
+   - **클라이언트 키**: 프론트 빌드 환경변수 `VITE_TOSS_CLIENT_KEY`. 비밀값이 아니라 운영 값은 `client/.env.production`에 저장소째 둔다. 로컬은 `client/.env.local`에 넣는다(`client/.env.example` 참고).
    - 클라이언트 키가 비어 있으면 후원 패널이 "결제 설정이 없어 지금은 후원할 수 없습니다"를 띄우고, 시크릿 키가 비어 있으면 결제 승인이 거절된다(409).
 5. 확인: 다른 계정의 LIVE 방송 상세에서 "후원하기" → 금액·메시지 → 결제위젯에서 카드 결제(테스트 모드라 카드 정보 없이 진행되거나 아무 값이나 통과한다) → 성공 페이지에 "후원했습니다"가 뜨고 DB `donation.status`가 `DONE`이 된다. 결제가 실패하면 실패 페이지가 뜨고 `CANCELED`가 된다. 결제창을 그냥 닫으면 토스가 주문 ID를 주지 않아 `PENDING`으로 남는다(내역·합계는 `DONE`만 센다).
 
