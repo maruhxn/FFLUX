@@ -16,7 +16,7 @@ server/
 
 - `modules/*`의 Gradle 의존은 `common` 하나뿐이다. 다른 모듈이 필요하면 아래 두 통로 중 하나를 쓴다.
   - **동기 조회**: 필요한 쪽이 자기 `application.required`에 포트를 선언하고, `app`의 어댑터가 상대 모듈의 `application.provided`를 호출해 구현한다.
-  - **비동기 전파**: `common`의 이벤트 계약(원시 타입과 ID만 담는다)을 `EventPublisherPort`로 발행하고, 받는 모듈의 `port.event`에서 `@TransactionalEventListener(AFTER_COMMIT)`로 받아 자기 provided 유스케이스를 호출한다.
+  - **비동기 전파**: `common`의 이벤트 계약(원시 타입과 ID만 담는다)을 `EventPublisherPort`로 발행하고, 받는 모듈의 `port.event`에서 `@TransactionalEventListener(AFTER_COMMIT)`로 받아 자기 provided 유스케이스를 호출한다. 트랜잭션 밖에서 발행하는 이벤트(후원 확정: 결제사 호출과 트랜잭션을 나눠 조건부 UPDATE가 이미 커밋된 뒤 발행)는 `fallbackExecution = true`로 받는다.
 - 모듈 경계를 넘는 참조는 ID 값(`streamerId: Long` 등)으로만 한다. 다른 모듈 엔티티와의 JPA 연관관계와 DB FK는 두지 않는다. 같은 모듈 안에서는 연관관계와 FK를 써도 된다.
 - 모듈 배치: MediaMTX 인증 콜백·상태 훅·kick은 `broadcast`, 녹화 완료 훅은 `recording`, 토스 연동은 `donation`, SSE 허브는 `realtime`, Spring Security 설정은 `app`.
 

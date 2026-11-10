@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
 /** 확정·취소는 결제사 호출과 트랜잭션을 나누므로, 조건부 UPDATE가 저마다 짧은 트랜잭션을 연다. */
-interface DonationJpaRepository : JpaRepository<Donation, Long>, DonationRepository {
+interface DonationJpaRepository : JpaRepository<Donation, Long>, DonationRepository, DonationRepositoryCustom {
 
     @Transactional
     @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -26,4 +26,10 @@ interface DonationJpaRepository : JpaRepository<Donation, Long>, DonationReposit
             "WHERE d.orderId = :orderId AND d.status = com.maruhxn.fflux.donation.domain.DonationStatus.PENDING",
     )
     override fun markCanceled(orderId: String): Int
+
+    @Query(
+        "SELECT COALESCE(SUM(d.amount.value), 0) FROM Donation d " +
+            "WHERE d.broadcastId = :broadcastId AND d.status = com.maruhxn.fflux.donation.domain.DonationStatus.DONE",
+    )
+    override fun sumDoneAmount(broadcastId: Long): Long
 }

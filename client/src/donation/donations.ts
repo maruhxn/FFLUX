@@ -1,4 +1,5 @@
-import { useMutation } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation } from '@tanstack/react-query'
+import { useCallback, useEffect, useState } from 'react'
 import { ANONYMOUS, loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { api } from '../api/client'
 
@@ -63,4 +64,48 @@ export function useCancelDonation() {
   return useMutation({
     mutationFn: (orderId: string) => api<DonationOrder>(`/api/donations/${encodeURIComponent(orderId)}/cancel`, { method: 'POST' }),
   })
+}
+
+/** 확정된 후원 한 건. [donorNickname]은 후원 때의 닉네임이고 [message]는 없으면 null이다. */
+export type DonationHistoryItem = { id: number; donorNickname: string; amount: number; message: string | null; confirmedAt: string }
+
+/** [totalAmount]는 페이지와 상관없이 방송의 확정된 후원 합계다. */
+type DonationPage = { items: DonationHistoryItem[]; nextCursor: number | null; totalAmount: number }
+
+/** SSE `donation` 이벤트가 이 키로 무효화해 내역과 합계를 다시 읽는다. */
+export const donationsKey = (broadcastId: number) => ['donations', broadcastId] as const
+
+/** 방송의 확정된 후원, 최신순. 다음 페이지는 "더 보기"로 읽는다. */
+export function useDonationHistory(broadcastId: number) {
+  return useInfiniteQuery({
+    queryKey: donationsKey(broadcastId),
+    initialPageParam: null as number | null,
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams()
+      if (pageParam !== null) params.set('cursor', String(pageParam))
+      return api<DonationPage>(`/api/broadcasts/${broadcastId}/donations?${params}`)
+    },
+    getNextPageParam: (last) => last.nextCursor,
+  })
+}
+
+/** SSE `donation` 이벤트. LIVE 방송에서 후원이 확정되면 온다. */
+export type DonationAlert = { donorNickname: string; amount: number; message: string | null }
+
+/** 토스트 한 건을 보여 주는 시간. */
+const DONATION_ALERT_MS = 5_000
+
+/** 후원 알림을 차례로 하나씩 [DONATION_ALERT_MS] 동안 보여 준다. [current]가 지금 보여 줄 알림이다. */
+export function useDonationAlerts() {
+  const [queue, setQueue] = useState<DonationAlert[]>([])
+  const current = queue[0] ?? null
+
+  useEffect(() => {
+    if (!current) return
+    const timer = setTimeout(() => setQueue((q) => q.slice(1)), DONATION_ALERT_MS)
+    return () => clearTimeout(timer)
+  }, [current])
+
+  const push = useCallback((alert: DonationAlert) => setQueue((q) => [...q, alert]), [])
+  return { current, push }
 }

@@ -89,6 +89,10 @@ class BroadcastService(
         (broadcastRepository.findByIdAndDeletedAtIsNull(broadcastId) ?: throw notFound()).streamerId
 
     @Transactional(readOnly = true)
+    override fun isLive(broadcastId: Long): Boolean =
+        broadcastRepository.findByIdAndDeletedAtIsNull(broadcastId)?.isWatchable() ?: false
+
+    @Transactional(readOnly = true)
     override fun findPublic(status: BroadcastStatus, cursor: Long?): BroadcastPage {
         if (status == BroadcastStatus.READY) throw BadRequestException("공개 목록은 LIVE 또는 ENDED만 조회할 수 있습니다.")
         return page(status = status, streamerId = null, cursor = cursor)

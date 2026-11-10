@@ -15,8 +15,11 @@ import {
   type BroadcastStatus,
 } from '../broadcast/broadcast'
 import { useBroadcastEvents } from '../broadcast/events'
+import { useDonationAlerts } from '../donation/donations'
 import { Comments } from '../components/Comments'
 import { Donation } from '../components/Donation'
+import { DonationHistory } from '../components/DonationHistory'
+import { DonationToast } from '../components/DonationToast'
 import { EndBroadcastButton } from '../components/EndBroadcastButton'
 import { LivePlayer } from '../components/LivePlayer'
 import { StatusBadge } from '../components/StatusBadge'
@@ -44,8 +47,9 @@ export function BroadcastDetailPage() {
   const navigate = useNavigate()
   const { data: me } = useMe()
   const { data: broadcast, error } = useBroadcast(id)
+  const donationAlerts = useDonationAlerts()
   // ENDED는 더 바뀌지 않으므로 구독하지 않는다.
-  useBroadcastEvents(id, !!broadcast && broadcast.status !== 'ENDED')
+  useBroadcastEvents(id, !!broadcast && broadcast.status !== 'ENDED', donationAlerts.push)
   // 스트리머 화면은 끝난 뒤 녹화 처리를 다시 읽어 따라간다. 이 화면에서 LIVE를 봤는지는 방송 ID와 함께 기억한다.
   const [sawLiveId, setSawLiveId] = useState<number | null>(null)
   if (broadcast?.status === 'LIVE' && sawLiveId !== id) setSawLiveId(id)
@@ -66,25 +70,29 @@ export function BroadcastDetailPage() {
 
   return (
     <div className="space-y-6">
-      {broadcast.whepUrl && broadcast.hlsUrl ? (
-        <LivePlayer
-          whepUrl={broadcast.whepUrl}
-          hlsUrl={broadcast.hlsUrl}
-          // SSE가 막힌 네트워크에서도 방송이 끝나 끊긴 것이면 종료 화면으로 바뀌게 상세를 다시 읽는다.
-          onDisconnect={() => void queryClient.invalidateQueries({ queryKey: broadcastDetailKey(id) })}
-        />
-      ) : broadcast.status === 'ENDED' && broadcast.recording?.url ? (
-        <video
-          src={apiUrl(broadcast.recording.url)}
-          controls
-          playsInline
-          className="aspect-video w-full rounded-lg bg-black"
-        />
-      ) : (
-        <div className="flex aspect-video items-center justify-center rounded-lg bg-neutral-900 text-neutral-500">
-          {placeholderOf(broadcast)}
-        </div>
-      )}
+      {/* LIVE 후원 알림은 플레이어 위에 토스트로 띄운다. */}
+      <div className="relative">
+        {broadcast.whepUrl && broadcast.hlsUrl ? (
+          <LivePlayer
+            whepUrl={broadcast.whepUrl}
+            hlsUrl={broadcast.hlsUrl}
+            // SSE가 막힌 네트워크에서도 방송이 끝나 끊긴 것이면 종료 화면으로 바뀌게 상세를 다시 읽는다.
+            onDisconnect={() => void queryClient.invalidateQueries({ queryKey: broadcastDetailKey(id) })}
+          />
+        ) : broadcast.status === 'ENDED' && broadcast.recording?.url ? (
+          <video
+            src={apiUrl(broadcast.recording.url)}
+            controls
+            playsInline
+            className="aspect-video w-full rounded-lg bg-black"
+          />
+        ) : (
+          <div className="flex aspect-video items-center justify-center rounded-lg bg-neutral-900 text-neutral-500">
+            {placeholderOf(broadcast)}
+          </div>
+        )}
+        <DonationToast alert={donationAlerts.current} />
+      </div>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <StatusBadge status={broadcast.status} />
@@ -136,7 +144,10 @@ export function BroadcastDetailPage() {
       {remove.error && <p className="text-sm text-red-400">{remove.error.message}</p>}
       {/* 후원은 LIVE·ENDED 방송의 스트리머에게 한다. */}
       {broadcast.status !== 'READY' && (
-        <Donation broadcastId={broadcast.id} streamerId={broadcast.streamerId} streamerNickname={broadcast.streamerNickname} />
+        <>
+          <Donation broadcastId={broadcast.id} streamerId={broadcast.streamerId} streamerNickname={broadcast.streamerNickname} />
+          <DonationHistory broadcastId={broadcast.id} />
+        </>
       )}
       {/* 댓글은 다시보기(끝난 방송의 재생할 수 있는 녹화)에만 단다. */}
       {broadcast.status === 'ENDED' && broadcast.recording?.status === 'READY' && <Comments broadcastId={broadcast.id} />}

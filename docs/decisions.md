@@ -218,7 +218,7 @@ server/
 
 - `modules/*`는 `common`에만 의존하고, `app`만 모든 모듈에 의존한다. 모듈 간 참조 금지는 Gradle 컴파일 단계에서 강제된다.
 - 모듈 간 동기 조회: 필요한 모듈이 자기 `application.required`에 포트를 선언하고, `app` 모듈 어댑터가 상대 모듈의 `application.provided`를 호출해 구현한다.
-- 모듈 간 비동기 전파: `common`의 이벤트 계약(원시 타입·ID만)을 `EventPublisherPort`로 발행하고, 수신 모듈의 `port.event`에서 `@TransactionalEventListener(AFTER_COMMIT)`로 받아 자기 provided 유스케이스를 호출한다.
+- 모듈 간 비동기 전파: `common`의 이벤트 계약(원시 타입·ID만)을 `EventPublisherPort`로 발행하고, 수신 모듈의 `port.event`에서 `@TransactionalEventListener(AFTER_COMMIT)`로 받아 자기 provided 유스케이스를 호출한다. 트랜잭션 밖에서 발행하는 이벤트(후원 확정: 결제사 호출과 트랜잭션을 나눠 조건부 UPDATE가 이미 커밋된 뒤 발행)는 `fallbackExecution = true`로 받는다.
 - 모듈 경계를 넘는 엔티티 참조는 ID 값만 둔다. JPA 연관관계와 DB FK는 두지 않는다. 같은 모듈 안에서는 허용한다.
 
 ### 모듈 내부 패키지 (헥사고날)

@@ -17,6 +17,9 @@ interface BroadcastFinder {
     /** 방송의 스트리머 회원 ID. 없거나 삭제됐으면 404. */
     fun findStreamerId(broadcastId: Long): Long
 
+    /** 삭제되지 않은 LIVE 방송인지. 없거나 삭제됐으면 false. */
+    fun isLive(broadcastId: Long): Boolean
+
     /** 메인(LIVE)·지난 방송(ENDED) 목록. READY는 공개 목록이 아니라 400. */
     fun findPublic(status: BroadcastStatus, cursor: Long?): BroadcastPage
 

@@ -11,7 +11,7 @@ paths:
 2. 결제창(카드) 결제 후 successUrl로 복귀하면 서버가 확정한다: 요청 금액 == PENDING 금액, 토스 승인 API 성공, 후원 대상 일치. 모두 맞으면 `DONE`, 하나라도 다르면 확정하지 않는다.
 3. 웹훅도 같은 확정 경로를 탄다. 결제 상태 웹훅은 서명이 없으므로 본문을 믿지 않고, `paymentKey`로 토스 결제 조회 API를 불러 상태·금액·`orderId`를 확인한다. 승인 재요청에 `ALREADY_PROCESSED_PAYMENT`가 오면 마찬가지로 조회 API로 확인한다.
 - failUrl로 돌아오면 `CANCELED`로 바꾼다. 상태는 `PENDING → DONE | CANCELED`이고, 이탈한 PENDING은 그대로 둔다(만료 스케줄러 없음).
-4. `DONE`이 되면 `DonationConfirmed` 이벤트를 발행한다(LIVE면 SSE 알림).
+4. `DONE`으로 바꾼 쪽(조건부 UPDATE 1행)만 `DonationConfirmed`를 발행한다. 확정은 트랜잭션 밖이라 `realtime`은 `fallbackExecution`으로 받고, 방송이 LIVE일 때만 SSE `donation`을 보낸다.
 
 ## 멱등
 

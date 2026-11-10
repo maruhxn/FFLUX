@@ -16,7 +16,7 @@ class BroadcastEventController(
 ) {
     /**
      * 방송별 SSE. 이벤트: `broadcast-status`(`{status}`), `broadcast-updated`(`{title, description}`),
-     * `viewer-count`(`{count}`, 구독 직후 한 번, 이후 바뀌면).
+     * `viewer-count`(`{count}`, 구독 직후 한 번, 이후 바뀌면), `donation`(`{donorNickname, amount, message}`, LIVE 방송의 후원 확정).
      */
     @PublicApi
     @GetMapping("/{id}/events")

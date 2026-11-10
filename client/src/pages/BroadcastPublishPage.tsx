@@ -15,6 +15,7 @@ import {
   type Facing,
 } from '../broadcast/capture'
 import { supportsPip } from '../broadcast/pip'
+import { useDonationAlerts } from '../donation/donations'
 import {
   flipPublishingCamera,
   startPublish,
@@ -22,6 +23,7 @@ import {
   usePublishSession,
   type PublishSession,
 } from '../broadcast/publishSession'
+import { DonationToast } from '../components/DonationToast'
 import { EndBroadcastButton } from '../components/EndBroadcastButton'
 import { ActionBar, Hints, Row, STAGE_BUTTON, StageMessage, Studio } from '../components/Studio'
 
@@ -302,10 +304,11 @@ function PrepareView({ broadcast }: { broadcast: Broadcast }) {
   )
 }
 
-/** 송출 중. LIVE로 바뀌는지 SSE로 따라간다. 카메라 송출이면 전면/후면을 바꿀 수 있다. */
+/** 송출 중. LIVE로 바뀌는지 SSE로 따라가고, LIVE 후원 알림을 미리보기 위에 띄운다. 카메라 송출이면 전면/후면을 바꿀 수 있다. */
 function PublishingView({ broadcast, session }: { broadcast: Broadcast; session: PublishSession }) {
   const { data: latest } = useBroadcast(broadcast.id)
-  useBroadcastEvents(broadcast.id, true)
+  const donationAlerts = useDonationAlerts()
+  useBroadcastEvents(broadcast.id, true, donationAlerts.push)
   const current = latest ?? broadcast
   const [flipping, setFlipping] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -323,7 +326,15 @@ function PublishingView({ broadcast, session }: { broadcast: Broadcast; session:
   }
 
   return (
-    <Studio heading="방송하기" broadcast={current} stage={<VideoStage stream={session.stream} />}>
+    <Studio
+      heading="방송하기"
+      broadcast={current}
+      stage={
+        <VideoStage stream={session.stream}>
+          <DonationToast alert={donationAlerts.current} />
+        </VideoStage>
+      }
+    >
       <TitleRow broadcast={current} />
       <Row label="송출">
         <p className="pt-2.5 font-semibold break-keep">

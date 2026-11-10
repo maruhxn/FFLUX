@@ -3,7 +3,12 @@ package com.maruhxn.fflux.donation.application
 import com.maruhxn.fflux.common.error.BadRequestException
 import com.maruhxn.fflux.common.error.ConflictException
 import com.maruhxn.fflux.common.error.NotFoundException
+import com.maruhxn.fflux.common.event.DonationConfirmed
+import com.maruhxn.fflux.common.event.EventPublisherPort
 import com.maruhxn.fflux.donation.application.provided.ConfirmDonationCommand
+import com.maruhxn.fflux.donation.application.provided.DonationFinder
+import com.maruhxn.fflux.donation.application.provided.DonationHistoryItem
+import com.maruhxn.fflux.donation.application.provided.DonationPage
 import com.maruhxn.fflux.donation.application.provided.DonationProcessor
 import com.maruhxn.fflux.donation.application.provided.DonationResult
 import com.maruhxn.fflux.donation.application.provided.RequestDonationCommand
@@ -25,15 +30,16 @@ import java.util.UUID
 
 /**
  * 확정·취소는 결제사 호출을 트랜잭션 밖에서 하고, 상태는 저장소의 조건부 UPDATE 한 번으로 바꾼다.
- * 같은 결제를 동시에 확정해도 DONE은 한 번만 된다.
+ * 같은 결제를 동시에 확정해도 DONE은 한 번만 되고, DONE으로 바꾼 쪽만 `DonationConfirmed`를 발행한다.
  */
 @Service
 class DonationService(
     private val donationRepository: DonationRepository,
     private val donationTargetFinder: DonationTargetFinder,
     private val paymentGateway: PaymentGateway,
+    private val eventPublisherPort: EventPublisherPort,
     private val clock: Clock,
-) : DonationProcessor {
+) : DonationProcessor, DonationFinder {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -64,7 +70,7 @@ class DonationService(
 
         val payment = approve(command.paymentKey, donation)
         donation.checkPayment(payment.orderId, payment.paid, payment.totalAmount)
-        if (!markDone(payment)) throw ConflictException("취소된 후원입니다.")
+        if (!markDone(donation, payment)) throw ConflictException("취소된 후원입니다.")
         return donation.toResult()
     }
 
@@ -75,7 +81,7 @@ class DonationService(
         if (!donation.isPaidBy(payment.orderId, payment.paid, payment.totalAmount)) {
             return log.info("토스 웹훅: 승인 완료가 아니거나 후원과 다른 결제 orderId={}", payment.orderId)
         }
-        if (!markDone(payment)) log.warn("토스 웹훅: 취소된 후원에 승인된 결제 orderId={}", payment.orderId)
+        if (!markDone(donation, payment)) log.warn("토스 웹훅: 취소된 후원에 승인된 결제 orderId={}", payment.orderId)
     }
 
     override fun cancel(orderId: String, memberId: Long): DonationResult {
@@ -87,13 +93,31 @@ class DonationService(
         return donation.toResult()
     }
 
+    /** 한 개를 더 읽어 다음 페이지가 있는지 판단한다. */
+    @Transactional(readOnly = true)
+    override fun findPage(broadcastId: Long, cursor: Long?): DonationPage {
+        val rows = donationRepository.findDonePage(broadcastId, cursor, PAGE_SIZE + 1)
+        val donations = rows.take(PAGE_SIZE)
+        return DonationPage(
+            items = donations.map { it.toHistoryItem() },
+            nextCursor = if (rows.size > PAGE_SIZE) donations.last().id else null,
+            totalAmount = donationRepository.sumDoneAmount(broadcastId),
+        )
+    }
+
     /**
-     * successUrl 확정과 웹훅이 함께 쓰는 확정 경로. 조건부 UPDATE로 PENDING만 DONE으로 바꾼다.
-     * 0행이면 다른 확정이 먼저 DONE으로 바꿨거나(성공) 그사이 취소됐다(false).
+     * successUrl 확정과 웹훅이 함께 쓰는 확정 경로. 조건부 UPDATE로 PENDING만 DONE으로 바꾸고, 바꿨으면 확정 이벤트를 발행한다.
+     * 0행이면 다른 확정이 먼저 DONE으로 바꿨거나(성공, 이벤트는 그쪽이 발행) 그사이 취소됐다(false).
      */
-    private fun markDone(payment: Payment): Boolean =
-        donationRepository.markDone(payment.orderId, payment.paymentKey, LocalDateTime.now(clock)) == 1 ||
-            findOrThrow(payment.orderId).status == DonationStatus.DONE
+    private fun markDone(donation: Donation, payment: Payment): Boolean {
+        if (donationRepository.markDone(payment.orderId, payment.paymentKey, LocalDateTime.now(clock)) == 1) {
+            eventPublisherPort.publish(
+                DonationConfirmed(donation.broadcastId, donation.donorNickname, donation.amount.value, donation.message?.value),
+            )
+            return true
+        }
+        return findOrThrow(payment.orderId).status == DonationStatus.DONE
+    }
 
     /** 이미 승인된 결제(승인 응답 유실, 동시 확정)는 조회 결과로 판단한다. */
     private fun approve(paymentKey: String, donation: Donation): Payment =
@@ -108,4 +132,16 @@ class DonationService(
         donationRepository.findByOrderId(orderId) ?: throw NotFoundException("후원을 찾을 수 없습니다.")
 
     private fun Donation.toResult() = DonationResult(orderId, broadcastId, amount.value)
+
+    private fun Donation.toHistoryItem() = DonationHistoryItem(
+        id = id,
+        donorNickname = donorNickname,
+        amount = amount.value,
+        message = message?.value,
+        confirmedAt = checkNotNull(confirmedAt) { "DONE 후원에 확정 시각이 없습니다. id=$id" },
+    )
+
+    companion object {
+        const val PAGE_SIZE = 20
+    }
 }
