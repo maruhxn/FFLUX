@@ -7,4 +7,5 @@ include(
     "modules:broadcast",
     "modules:realtime",
     "modules:recording",
+    "modules:comment",
 )

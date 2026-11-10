@@ -95,7 +95,7 @@ class ArchitectureTest {
 
     companion object {
         /** 새 모듈을 추가하면 여기에도 추가한다. */
-        val MODULES = listOf("member", "broadcast", "realtime", "recording")
+        val MODULES = listOf("member", "broadcast", "realtime", "recording", "comment")
 
         /** `app` 모듈의 최상위 패키지. 모듈이 아니다. */
         val APP_PACKAGES = setOf("adapter", "auth", "config", "web")

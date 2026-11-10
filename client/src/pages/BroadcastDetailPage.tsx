@@ -15,6 +15,7 @@ import {
   type BroadcastStatus,
 } from '../broadcast/broadcast'
 import { useBroadcastEvents } from '../broadcast/events'
+import { Comments } from '../components/Comments'
 import { EndBroadcastButton } from '../components/EndBroadcastButton'
 import { LivePlayer } from '../components/LivePlayer'
 import { StatusBadge } from '../components/StatusBadge'
@@ -132,6 +133,8 @@ export function BroadcastDetailPage() {
         </div>
       )}
       {remove.error && <p className="text-sm text-red-400">{remove.error.message}</p>}
+      {/* 댓글은 다시보기(끝난 방송의 재생할 수 있는 녹화)에만 단다. */}
+      {broadcast.status === 'ENDED' && broadcast.recording?.status === 'READY' && <Comments broadcastId={broadcast.id} />}
     </div>
   )
 }
