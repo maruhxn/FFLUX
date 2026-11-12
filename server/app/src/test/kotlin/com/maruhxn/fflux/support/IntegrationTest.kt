@@ -20,9 +20,11 @@ import org.springframework.web.client.RestClient
         "fflux.test-accounts.streamer-password=$TEST_STREAMER_PASSWORD",
         "fflux.test-accounts.viewer-password=$TEST_VIEWER_PASSWORD",
         "fflux.cors.allowed-origins=$TEST_FRONT_ORIGIN",
+        // 상태 맞추기는 테스트가 직접 부른다. 주기 실행이 다른 테스트의 LIVE 방송을 끝내지 않게 끈다.
+        "fflux.mediamtx.reconcile.enabled=false",
     ],
 )
-@Import(TestcontainersConfiguration::class, TestClockConfiguration::class, FakeMediaPublisherKickerConfiguration::class, FakePaymentGatewayConfiguration::class)
+@Import(TestcontainersConfiguration::class, TestClockConfiguration::class, FakeMediaPublisherKickerConfiguration::class, FakeMediaPublishingFinderConfiguration::class, FakePaymentGatewayConfiguration::class)
 abstract class IntegrationTest {
 
     @LocalServerPort

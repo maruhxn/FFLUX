@@ -12,6 +12,9 @@ interface BroadcastRepository {
     /** 삭제되지 않은 [status] 방송들. */
     fun findAllByIdInAndStatusAndDeletedAtIsNull(ids: Collection<Long>, status: BroadcastStatus): List<Broadcast>
 
+    /** 삭제되지 않은 [status] 방송 전부. */
+    fun findAllByStatusAndDeletedAtIsNull(status: BroadcastStatus): List<Broadcast>
+
     /** 삭제되지 않은 방송을 행 잠금(`SELECT … FOR UPDATE`)으로 읽는다. */
     fun findForUpdate(id: Long): Broadcast?
 

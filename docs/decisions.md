@@ -78,19 +78,19 @@
 
 ### 방송 상태 전이 module
 
-`broadcast` 모듈 application 계층에 방송 상태 전이와 송출·시청 허가 판단을 맡는 module 하나를 둔다. 진입점(MediaMTX 인증 콜백, 훅 컨트롤러, 종료 API)은 이 module을 부르기만 한다.
+`broadcast` 모듈 application 계층에 방송 상태 전이와 송출·시청 허가 판단을 맡는 module 하나를 둔다. 진입점(MediaMTX 인증 콜백, 훅 컨트롤러, 종료 API, 상태 맞추기)은 이 module을 부르기만 한다.
 
 | 호출하는 곳 | 메서드 | 입력 | 결과 |
 |---|---|---|---|
 | MediaMTX `publish` 인증 | 송출 허가 | media path, 원본 토큰 | 허용/거절(예외 없음). 같은 트랜잭션에서 토큰을 조건부 UPDATE로 소비 |
 | MediaMTX `read` 인증 | 시청 허가 | media path | 허용/거절 |
-| `available` 훅 | 송출 시작 확인 | media path | 없음. `READY → LIVE`, 할 수 없으면 경고 로그 |
-| `unavailable` 훅 | 송출 끊김 | media path | 없음. `LIVE → ENDED`, 할 수 없으면 경고 로그 |
+| `available` 훅, 상태 맞추기 | 송출 시작 확인 | media path, (상태 맞추기만) 시작 시각 | 없음. `READY → LIVE`, 할 수 없으면 경고 로그 |
+| `unavailable` 훅, 상태 맞추기 | 송출 끊김 | media path | 없음. `LIVE → ENDED`, 할 수 없으면 경고 로그 |
 | 종료 API | 종료 요청 | 방송 ID, 회원 ID | 성공, 또는 403/404/409 예외 |
 
 - media path를 방송으로 찾는 일은 이 module 안에서 한다.
 - 이벤트(`BroadcastStatusChanged`)는 실제로 전이가 일어났을 때만 발행한다.
-- kick은 종료 요청에서만, 전이 트랜잭션이 커밋된 뒤 같은 호출 안에서 부른다. 실패하면 로그만 남기고 종료 요청은 성공으로 응답한다(상태는 이미 ENDED이고, 이후 송출 끊김 훅은 no-op).
+- kick은 종료 요청과 상태 맞추기(아래)에서만 부른다. 종료 요청은 전이 트랜잭션이 커밋된 뒤 같은 호출 안에서 부른다. 실패하면 로그만 남기고 종료 요청은 성공으로 응답한다(상태는 이미 ENDED이고, 이후 송출 끊김 훅은 no-op).
 - 훅은 상태가 맞지 않거나 방송이 없어도 항상 200으로 응답하고 경고 로그만 남긴다. 409는 종료 요청에만 쓴다.
 - 송출 토큰 자체(해시 저장, TTL, 발급·무효화)는 이 module 밖에 둔다.
 
@@ -100,6 +100,24 @@
 - `LIVE → ENDED`(송출 끊김): `runOnUnavailable` 훅이 `/internal/mediamtx/unavailable`을 호출해 즉시 ENDED. 모바일 앱 전환 시 방송이 종료됨을 README에 명시.
 - `LIVE → ENDED`(종료 요청): 종료 API 호출 → 세션·스트리머 본인 검증 → ENDED → MediaMTX API로 송출 세션 kick → 클라이언트가 트랙과 PeerConnection 정리. `LIVE`가 아닌 방송에 종료 API를 호출하면 409(이미 `ENDED`면 성공).
 - 방송을 끝내는 것은 종료 요청과 송출 끊김뿐이다. 스트리머가 사이트 안에서 다른 페이지로 옮겨도 송출은 이어진다(송출 연결을 송출 화면이 아니라 앱 전체에 하나 둔다). 탭 닫기·새로고침은 브라우저가 연결을 끊으므로 막을 수 없어 확인창만 띄우고, 실제로 닫히면 송출 끊김으로 ENDED. 브라우저의 "공유 중지"는 종료 요청으로 본다.
+
+### 상태 맞추기
+
+MediaMTX 훅(`notify-server.sh`)은 알림을 한 번만 보내고 재시도하지 않는다. 배포·재시작으로 Spring이 꺼진 사이나 네트워크가 잠깐 끊긴 사이 알림을 놓치면, 방송 상태가 실제 송출과 어긋난 채 남는다(LIVE인데 송출 없음 등). 그래서 Spring이 뜨자마자 한 번, 그 뒤 30초마다 MediaMTX path 목록(`/v3/paths/list`의 `available` path)과 DB를 맞춘다(#28).
+
+| 어긋남 | 원인 | 처리 |
+|---|---|---|
+| DB `LIVE`, MediaMTX 송출 없음 | `unavailable` 훅 유실 | 송출 끊김으로 `ENDED`. 실제 끊긴 시각을 알 수 없어 `endedAt`은 발견한 시각(최대 30초 늦음) |
+| DB `READY`, MediaMTX 송출 있음 | `available` 훅 유실 | 송출 시작 확인으로 `LIVE`. `startedAt`은 MediaMTX `availableTime`(송출을 받기 시작한 시각) |
+| DB `ENDED`·삭제, MediaMTX 송출 남음 | 종료 요청 뒤 kick 실패 | 송출 세션 kick. 녹화 방송이 계속 녹화되는 것을 막는다 |
+
+- 전이는 위 module의 송출 끊김·송출 시작 확인을 그대로 부른다. 새 상태나 종료 원인은 없다(바로잡은 종료도 송출 끊김). 이벤트도 같아서 SSE로 전달된다.
+- DB의 `LIVE` 방송을 먼저 읽고 MediaMTX 목록을 나중에 읽는다. `LIVE`는 송출이 들어온 뒤에만 되므로, 그사이 `LIVE`가 된 방송을 잘못 끝내지 않는다. 겹쳐 온 훅과는 행 잠금이 순서를 정한다.
+- MediaMTX 조회가 실패하거나 목록이 한 페이지를 넘어 잘리면 아무것도 바꾸지 않고 다음 주기를 기다린다.
+- 목록을 읽은 뒤 방송 행을 읽기 전에 송출이 끊기면(`unavailable` 훅은 READY라 no-op), READY 방송이 잠깐 `LIVE`가 됐다가 다음 주기에 송출 끊김으로 `ENDED`가 된다. 드물고 30초 안에 회복돼 받아들인다.
+- 훅 스크립트에 재시도를 넣지 않는다. Spring이 수십 초 꺼지는 배포는 재시도로 메울 수 없어, 회복 경로를 상태 맞추기 하나로 둔다.
+- Spring은 한 대라 여러 서버 간 잠금은 두지 않는다. 통합 테스트는 `fflux.mediamtx.reconcile.enabled=false`로 주기 실행을 끄고 직접 부른다.
+- 녹화 상태(`PROCESSING`에 멈춤)는 범위 밖이다.
 
 ### 방송 관리 규칙
 

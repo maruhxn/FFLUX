@@ -17,11 +17,12 @@ paths:
 | `LIVE → ENDED` 송출 끊김 | `runOnUnavailable` 훅 → `/internal/mediamtx/unavailable` → 즉시 ENDED (유예·재접속 없음) |
 | `LIVE → ENDED` 종료 요청 | 종료 API: 세션·스트리머 본인 검증 → ENDED → MediaMTX API로 송출 세션 kick |
 
-- 프론트 요청으로 LIVE를 만들지 않는다. LIVE는 훅으로만 된다.
+- 프론트 요청으로 LIVE를 만들지 않는다. LIVE는 훅(또는 훅을 놓쳤을 때 상태 맞추기)으로만 된다.
+- 상태 맞추기: 훅은 한 번만 오므로 `BroadcastStatusReconciler`가 기동 직후와 30초마다 MediaMTX path 목록과 DB를 맞춘다. 송출 없는 LIVE → 송출 끊김, 송출 들어오는 READY → 송출 시작 확인(`startedAt` = MediaMTX `availableTime`), 끝났거나 삭제된 방송에 남은 송출 → kick. MediaMTX 조회 실패면 아무것도 바꾸지 않는다(`docs/decisions.md` 3절 상태 맞추기).
 - 전이는 `broadcast`의 방송 상태 전이 module 하나에서만 한다. 메서드는 호출하는 곳마다 하나다: 송출 허가, 시청 허가, 송출 시작 확인, 송출 끊김, 종료 요청(`docs/decisions.md` 3절 표). 진입점 컨트롤러는 이 module을 부르기만 한다.
 - 전이 방식: 방송 행을 `@Lock(PESSIMISTIC_WRITE)` 조회로 잠그고, 엔티티 메서드가 "전이 / 이미 목표 상태(no-op) / 위반"을 판단한다. 종료 요청과 송출 끊김이 겹쳐도 잠금이 순서를 정하고, 늦게 온 쪽은 no-op으로 성공한다. `READY` 방송의 종료 요청은 409.
 - 삭제된 방송은 전이 대상이 아니다.
-- 이벤트는 실제로 전이됐을 때만 발행한다. kick은 종료 요청에서만, 커밋 뒤 같은 호출 안에서 부르고 실패하면 로그만 남긴다.
+- 이벤트는 실제로 전이됐을 때만 발행한다. kick은 종료 요청(커밋 뒤 같은 호출 안)과 상태 맞추기에서만 부르고, 실패하면 로그만 남긴다.
 - 훅(`available`, `unavailable`)은 항상 200으로 응답하고, 전이할 수 없으면 경고 로그만 남긴다.
 - 한 스트리머의 `LIVE` 방송은 동시에 하나다. 송출 토큰 발급과 `publish` 인증에서 검사한다. 거의 동시 송출 시의 경합은 허용한다(`docs/decisions.md` 3절).
 - 수정은 `READY`/`LIVE`에서만(`LIVE` 중 수정은 `BroadcastUpdated` 이벤트로 SSE 반영), 삭제는 `READY`/`ENDED`에서만(LIVE면 409). 삭제 시 미소비 송출 토큰을 무효화한다. 삭제는 soft delete이고 `BroadcastDeleted` 이벤트로 녹화·댓글을 숨긴다. 후원 기록은 보존한다.

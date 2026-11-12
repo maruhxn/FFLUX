@@ -1,5 +1,7 @@
 package com.maruhxn.fflux.broadcast.application.provided
 
+import java.time.LocalDateTime
+
 /**
  * 방송 상태 전이 module(docs/decisions.md 3절). 미디어 서버의 인증 콜백과 훅은 이 module을 부르기만 한다.
  * [mediaPath]로 방송을 찾는 일도 여기서 한다. 미디어 서버가 부르는 메서드는 예외로 실패하지 않는다.
@@ -11,8 +13,11 @@ interface BroadcastStatusChanger {
     /** 시청 허가: 방송이 LIVE이고 삭제되지 않았으면 true. */
     fun authorizeRead(mediaPath: String): Boolean
 
-    /** 송출 시작 확인: READY → LIVE. 이미 LIVE면 그대로 두고, 전이할 수 없으면 경고 로그만 남긴다. */
-    fun confirmPublishStarted(mediaPath: String)
+    /**
+     * 송출 시작 확인: READY → LIVE. 이미 LIVE면 그대로 두고, 전이할 수 없으면 경고 로그만 남긴다.
+     * 시작 시각은 [startedAt]이고, 없으면(훅) 지금이다. 상태 맞추기는 미디어 서버가 송출을 받기 시작한 시각을 넘긴다.
+     */
+    fun confirmPublishStarted(mediaPath: String, startedAt: LocalDateTime? = null)
 
     /** 송출 끊김: LIVE → ENDED. 이미 ENDED면 그대로 두고, 전이할 수 없으면 경고 로그만 남긴다. */
     fun confirmPublishEnded(mediaPath: String)

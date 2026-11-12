@@ -49,11 +49,11 @@ class BroadcastStatusChangeService(
     override fun authorizeRead(mediaPath: String): Boolean =
         broadcastRepository.findByMediaPathAndDeletedAtIsNull(mediaPath)?.isWatchable() ?: false
 
-    override fun confirmPublishStarted(mediaPath: String) {
+    override fun confirmPublishStarted(mediaPath: String, startedAt: LocalDateTime?) {
         val broadcast = broadcastRepository.findForUpdateByMediaPath(mediaPath)
             ?: return log.warn("송출 시작 확인: 방송이 없거나 삭제됨 path={}", mediaPath)
         try {
-            if (broadcast.confirmPublishStarted(LocalDateTime.now(clock))) {
+            if (broadcast.confirmPublishStarted(startedAt ?: LocalDateTime.now(clock))) {
                 log.info("방송 LIVE 전환: id={}", broadcast.id)
                 publishStatusChanged(broadcast)
             }
