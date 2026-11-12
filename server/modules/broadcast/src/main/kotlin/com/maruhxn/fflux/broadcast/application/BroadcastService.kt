@@ -89,6 +89,10 @@ class BroadcastService(
         (broadcastRepository.findByIdAndDeletedAtIsNull(broadcastId) ?: throw notFound()).streamerId
 
     @Transactional(readOnly = true)
+    override fun findLiveIdOf(streamerId: Long): Long? =
+        broadcastRepository.findFirstByStreamerIdAndStatusAndDeletedAtIsNull(streamerId, BroadcastStatus.LIVE)?.id
+
+    @Transactional(readOnly = true)
     override fun isLive(broadcastId: Long): Boolean =
         broadcastRepository.findByIdAndDeletedAtIsNull(broadcastId)?.isWatchable() ?: false
 

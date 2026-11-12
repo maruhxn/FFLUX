@@ -177,7 +177,7 @@ export function BroadcastDetailPage() {
       {/* 채팅은 LIVE 방송에만 있다(다시보기에는 보여 주지 않는다). 넓은 화면은 오른쪽 칸, 좁은 화면은 플레이어 정보 아래. */}
       {live && (
         <aside className="border-t border-neutral-800 lg:w-[22rem] lg:shrink-0 lg:border-t-0 lg:border-l">
-          <Chat broadcastId={broadcast.id} />
+          <Chat broadcastId={broadcast.id} streamerId={broadcast.streamerId} />
         </aside>
       )}
     </div>

@@ -73,6 +73,9 @@ abstract class BroadcastFlowTest : IntegrationTest() {
             .body(mapOf("path" to path))
             .retrieve().toBodilessEntity()
 
+    protected fun memberIdOf(username: String): Long =
+        jdbcTemplate.queryForObject("SELECT id FROM member WHERE username = ?", Long::class.java, username)!!
+
     protected fun statusOf(id: Long): String =
         jdbcTemplate.queryForObject("SELECT status FROM broadcast WHERE id = ?", String::class.java, id)!!
 

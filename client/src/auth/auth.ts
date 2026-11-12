@@ -1,9 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { api, ApiError } from '../api/client'
 
 export type Me = { memberId: number; nickname: string }
 
 const ME_KEY = ['me'] as const
+
+/** 이미 읽어 둔 내 회원 ID. 로그인하지 않았거나 아직 모르면 null. SSE 이벤트가 나에 대한 것인지 볼 때 쓴다. */
+export const cachedMemberId = (queryClient: QueryClient) => queryClient.getQueryData<Me | null>(ME_KEY)?.memberId ?? null
 
 /** 현재 로그인한 회원. 로그인하지 않았으면 null. */
 export function useMe() {

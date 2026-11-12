@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiUrl } from '../api/client'
-import { appendChat, refetchChats, type ChatMessage } from '../chat/chats'
+import { cachedMemberId } from '../auth/auth'
+import { appendChat, hideChat, refetchChats, setMyRestriction, type ChatMessage } from '../chat/chats'
 import { donationsKey, type DonationAlert } from '../donation/donations'
 import { broadcastDetailKey, type BroadcastDetail, type BroadcastStatus } from './broadcast'
 
@@ -32,7 +33,8 @@ export function openBroadcastEvents(id: number, listen: (source: EventSource) =>
 
 /**
  * SSE 이벤트 이름. `broadcast-status`는 {@link BroadcastStatusMessage}, `broadcast-updated`는 `{title, description}`,
- * `viewer-count`는 `{count}`, `donation`은 {@link DonationAlert}, `chat`은 {@link ChatMessage}를 싣는다. 시청자 수는 방송 상태와 관계없이 오므로 화면이 LIVE일 때만 보여 준다.
+ * `viewer-count`는 `{count}`, `donation`은 {@link DonationAlert}, `chat`은 {@link ChatMessage}, `chat-hidden`은 `{id}`,
+ * `chat-restriction`은 {@link ChatRestrictionMessage}를 싣는다. 시청자 수는 방송 상태와 관계없이 오므로 화면이 LIVE일 때만 보여 준다.
  * 후원 알림은 LIVE 방송에서 확정된 후원만 온다.
  */
 export const BROADCAST_STATUS_EVENT = 'broadcast-status'
@@ -40,6 +42,11 @@ export const BROADCAST_UPDATED_EVENT = 'broadcast-updated'
 const VIEWER_COUNT_EVENT = 'viewer-count'
 const DONATION_EVENT = 'donation'
 const CHAT_EVENT = 'chat'
+const CHAT_HIDDEN_EVENT = 'chat-hidden'
+const CHAT_RESTRICTION_EVENT = 'chat-restriction'
+
+/** 스트리머가 회원을 채팅 금지했거나(restricted) 풀었다. 모든 구독자가 받지만 [memberId]가 나일 때만 반영한다. */
+type ChatRestrictionMessage = { memberId: number; restricted: boolean; until: string | null }
 
 export type BroadcastStatusMessage = { status: BroadcastStatus }
 
@@ -79,6 +86,14 @@ export function useBroadcastEvents(id: number, enabled: boolean, onDonation?: (a
         void queryClient.invalidateQueries({ queryKey: donationsKey(id) })
       })
       source.addEventListener(CHAT_EVENT, (e) => appendChat(queryClient, id, JSON.parse(e.data) as ChatMessage))
+      source.addEventListener(CHAT_HIDDEN_EVENT, (e) => hideChat(queryClient, id, (JSON.parse(e.data) as { id: number }).id))
+      source.addEventListener(CHAT_RESTRICTION_EVENT, (e) => {
+        const { memberId, restricted, until } = JSON.parse(e.data) as ChatRestrictionMessage
+        const me = cachedMemberId(queryClient)
+        // 내 정보를 아직 못 읽었으면 나에 대한 것인지 모르므로 서버가 담아 주는 내 금지 상태를 다시 읽는다.
+        if (me === null) refetchChats(queryClient, id)
+        else if (memberId === me) setMyRestriction(queryClient, id, restricted ? { until } : null)
+      })
     })
   }, [id, enabled, queryClient])
 }

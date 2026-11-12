@@ -17,6 +17,9 @@ interface BroadcastFinder {
     /** 방송의 스트리머 회원 ID. 없거나 삭제됐으면 404. */
     fun findStreamerId(broadcastId: Long): Long
 
+    /** 스트리머의 삭제되지 않은 LIVE 방송 ID. 없으면 null(LIVE는 스트리머마다 많아야 하나다). */
+    fun findLiveIdOf(streamerId: Long): Long?
+
     /** 삭제되지 않은 LIVE 방송인지. 없거나 삭제됐으면 false. */
     fun isLive(broadcastId: Long): Boolean
 

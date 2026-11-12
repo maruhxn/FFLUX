@@ -26,6 +26,8 @@ class ChatTest : BroadcastFlowTest() {
         assertEquals(chats, chats(id, cookie = streamer))
         assertEquals(listOf("안녕하세요", "어서 오세요"), chats.map { it["content"] })
         assertEquals(listOf("테스트시청자", "테스트스트리머"), chats.map { it["authorNickname"] })
+        assertEquals(listOf(memberIdOf("viewer"), memberIdOf("streamer")), chats.map { (it["authorId"] as Number).toLong() })
+        assertEquals(listOf(false, false), chats.map { it["hidden"] })
     }
 
     @Test
@@ -91,7 +93,10 @@ class ChatTest : BroadcastFlowTest() {
         subscribe(id).use { events ->
             val chatId = (post(id, other, "안녕하세요").body!!["id"] as Number).toLong()
 
-            assertEquals(SseEvent("chat", """{"id":$chatId,"authorNickname":"테스트시청자","content":"안녕하세요"}"""), events.next())
+            assertEquals(
+                SseEvent("chat", """{"id":$chatId,"authorId":${memberIdOf("viewer")},"authorNickname":"테스트시청자","content":"안녕하세요","hidden":false}"""),
+                events.next(),
+            )
             assertTrue(events.nothingWithin())
         }
     }
@@ -111,7 +116,7 @@ class ChatTest : BroadcastFlowTest() {
     private fun chats(id: Long, cookie: String? = other): List<Map<String, Any?>> {
         val response = chatsResponse(id, cookie)
         assertEquals(HttpStatus.OK, response.statusCode)
-        return response.body as List<Map<String, Any?>>
+        return (response.body as Map<String, Any?>)["chats"] as List<Map<String, Any?>>
     }
 
     private fun chatsResponse(id: Long, cookie: String? = other): ResponseEntity<*> =

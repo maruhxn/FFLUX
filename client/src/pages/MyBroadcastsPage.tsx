@@ -1,6 +1,7 @@
 import { Link, Navigate } from 'react-router'
 import { useMe } from '../auth/auth'
 import { BroadcastList } from '../components/BroadcastList'
+import { ChatRestrictionList } from '../components/ChatRestrictionList'
 
 export function MyBroadcastsPage() {
   const { data: me, isPending } = useMe()
@@ -16,6 +17,7 @@ export function MyBroadcastsPage() {
         </Link>
       </div>
       <BroadcastList kind="mine" empty="등록한 방송이 없습니다." />
+      <ChatRestrictionList />
     </div>
   )
 }

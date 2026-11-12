@@ -1,8 +1,8 @@
 package com.maruhxn.fflux.chat.port.web
 
 import com.maruhxn.fflux.chat.application.provided.ChatFinder
-import com.maruhxn.fflux.chat.application.provided.ChatResult
 import com.maruhxn.fflux.chat.application.provided.ChatWriter
+import com.maruhxn.fflux.chat.application.provided.RecentChatsResult
 import com.maruhxn.fflux.chat.application.provided.WriteChatCommand
 import com.maruhxn.fflux.common.auth.LoginMember
 import com.maruhxn.fflux.common.auth.PublicApi
@@ -24,7 +24,7 @@ class ChatController(
 ) {
     @PublicApi
     @GetMapping
-    fun recent(@PathVariable broadcastId: Long): List<ChatResult> = chatFinder.findRecent(broadcastId)
+    fun recent(member: LoginMember?, @PathVariable broadcastId: Long): RecentChatsResult = chatFinder.findRecent(broadcastId, member?.memberId)
 
     @PostMapping
     fun write(member: LoginMember, @PathVariable broadcastId: Long, @RequestBody request: ChatRequest): ResponseEntity<WriteChatResponse> {
