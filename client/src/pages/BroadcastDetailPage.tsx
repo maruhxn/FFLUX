@@ -26,6 +26,12 @@ import { LivePlayer } from '../components/LivePlayer'
 import { StatusBadge } from '../components/StatusBadge'
 import { StreamingTime } from '../components/StreamingTime'
 
+/**
+ * 넓은 화면에서 플레이어 높이는 창 높이에서 헤더와 방송 정보 줄 몫(15rem)을 뺀 값을 넘지 않는다.
+ * 폭이 아주 넓어도 제목과 스트리머 줄(방송 시작·종료 버튼)이 첫 화면에 보이고, 남는 좌우는 가운데 맞춘 검은 여백이 된다.
+ */
+const PLAYER_MAX_HEIGHT = 'lg:mx-auto lg:max-h-[calc(100dvh-15rem)]'
+
 const PLAYER_PLACEHOLDER: Record<BroadcastStatus, string> = {
   READY: '방송 대기 중',
   LIVE: '방송 중',
@@ -82,11 +88,19 @@ export function BroadcastDetailPage() {
               hlsUrl={broadcast.hlsUrl}
               // SSE가 막힌 네트워크에서도 방송이 끝나 끊긴 것이면 종료 화면으로 바뀌게 상세를 다시 읽는다.
               onDisconnect={() => void queryClient.invalidateQueries({ queryKey: broadcastDetailKey(id) })}
+              className={PLAYER_MAX_HEIGHT}
             />
           ) : broadcast.status === 'ENDED' && broadcast.recording?.url ? (
-            <video src={apiUrl(broadcast.recording.url)} controls playsInline className="aspect-video w-full bg-black" />
+            <video
+              src={apiUrl(broadcast.recording.url)}
+              controls
+              playsInline
+              className={`aspect-video w-full bg-black object-contain ${PLAYER_MAX_HEIGHT}`}
+            />
           ) : (
-            <div className="flex aspect-video items-center justify-center bg-neutral-900 text-neutral-500">{placeholderOf(broadcast)}</div>
+            <div className={`flex aspect-video items-center justify-center bg-neutral-900 text-neutral-500 ${PLAYER_MAX_HEIGHT}`}>
+              {placeholderOf(broadcast)}
+            </div>
           )}
           <DonationToast alert={donationAlerts.current} />
         </div>

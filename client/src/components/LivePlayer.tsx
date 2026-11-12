@@ -13,7 +13,17 @@ const CONTROLS_IDLE_MS = 3000
  * 자동재생 정책 때문에 소리를 끈 채 시작한다. 재생 중 끊기면 "다시 연결"로 처음부터 다시 붙는다.
  * 끊길 때마다 [onDisconnect]를 부른다(방송이 끝나서 끊긴 것인지 확인하는 데 쓴다).
  */
-export function LivePlayer({ whepUrl, hlsUrl, onDisconnect }: { whepUrl: string; hlsUrl: string; onDisconnect: () => void }) {
+export function LivePlayer({
+  whepUrl,
+  hlsUrl,
+  onDisconnect,
+  className = '',
+}: {
+  whepUrl: string
+  hlsUrl: string
+  onDisconnect: () => void
+  className?: string
+}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [mode, setMode] = useState<Mode>('connecting')
@@ -116,7 +126,7 @@ export function LivePlayer({ whepUrl, hlsUrl, onDisconnect }: { whepUrl: string;
       ref={containerRef}
       onMouseMove={controls.poke}
       onTouchStart={controls.poke}
-      className={`relative aspect-video overflow-hidden rounded-lg bg-black ${showControls ? '' : 'cursor-none'}`}
+      className={`relative aspect-video overflow-hidden bg-black ${showControls ? '' : 'cursor-none'} ${className}`}
     >
       <video
         ref={videoRef}
