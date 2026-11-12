@@ -1,4 +1,4 @@
-# FFLUX 운영 스택(GCP VM): Spring, MySQL, MediaMTX, Caddy. 프론트는 Vercel이 서빙한다.
+# FFLUX 운영 스택(GCP VM): Spring, MySQL, MediaMTX, 녹화 다시 처리(recording-sweeper), Caddy. 프론트는 Vercel이 서빙한다.
 # 배포: main 푸시 때 GitHub Actions가 자동으로 한다(.github/workflows/cd.yml). 손 배포는 저장소 루트에서
 #   git fetch && git checkout --detach origin/main && docker compose pull && docker compose up -d   (docs/deploy.md 참고)
 # 비밀값은 루트 .env에서 읽는다(.env.example 참고). 로컬 개발 스택은 infra/compose.yml이다.
@@ -63,6 +63,21 @@ services:
       # WebRTC 미디어만 연다. WHIP/WHEP/HLS(8889/8888)는 Caddy, Control API(9997)는 Spring만 내부망으로 쓴다.
       - "8189:8189/udp"
       - "8189:8189/tcp"
+
+  # 남은 녹화 원본을 1분마다 다시 처리한다(infra/hooks/sweep-recordings.sh). MediaMTX와 같은 이미지라 ffmpeg가 있다.
+  recording-sweeper:
+    image: bluenviron/mediamtx:latest-ffmpeg
+    restart: unless-stopped
+    # sh가 1번 프로세스면 종료 신호를 받지 못해 멈출 때 기다리게 된다.
+    init: true
+    entrypoint: ["sh", "/hooks/sweep-recordings.sh"]
+    environment:
+      FFLUX_SERVER_URL: http://app:8080
+      MEDIAMTX_API_URL: http://mediamtx:9997
+    volumes:
+      - ./infra/hooks:/hooks:ro
+      - recordings:/recordings
+      - vod:/vod
 
   caddy:
     image: caddy:2

@@ -49,9 +49,9 @@ paths:
 - `rec/` path만 녹화된다. 세그먼트가 끝나면 MediaMTX `runOnRecordSegmentComplete` 훅이 리먹싱 전에 `processing`, ffmpeg로 faststart MP4 리먹싱을 마치면 `ready`(파일 경로, `ffprobe` 길이) 또는 `failed`를 `recording` 모듈의 internal API로 알린다. `Recording`은 방송 종료 이벤트가 아니라 이 통지로 만들고, 같은 통지가 반복돼도 결과가 같다.
 - `Recording` 상태는 `PROCESSING → READY / FAILED`. 다시보기 목록과 재생에는 `READY`만 노출한다. `FAILED`는 스트리머에게만 보인다.
 - 방송 1건 = 녹화 1건(`broadcast_id` 유니크). 두 번째 세그먼트(12시간 초과)는 무시하고 로그만 남긴다.
-- 리먹싱이 성공하면 원본 fMP4를 지우고, 실패하면 남긴다. 자동 재시도는 없다.
+- 원본 fMP4는 Spring이 `ready`를 받아야만 지운다. 남은 원본은 `recording-sweeper`(`infra/hooks/sweep-recordings.sh`)가 1분마다(2분 넘게 안 바뀐 것, 송출 중 path 제외) 훅을 다시 돌려 처리한다. 훅은 원본별 `flock`으로 겹치지 않고, 재생용 MP4가 있으면 `ready`만 다시 보내며, 리먹싱 3번 실패면 멈춘다(`docs/decisions.md` 녹화 절).
 - 파일 경로는 DB에 저장하고, 재생 URL은 Caddy 정적 서빙 경로로 만든다.
-- 통지: `POST /internal/mediamtx/recordings/{processing|ready|failed}`(본문 `path`, `segmentPath`, ready는 `filePath`와 선택 `durationSeconds`). 항상 200이고, 방송이 없거나 삭제됐거나 두 번째 세그먼트면 경고 로그만 남긴다. 같은 통지의 반복과 두 번째 세그먼트는 처음 받은 세그먼트 경로로 가른다. `READY`는 되돌리지 않고, `FAILED`는 손으로 훅을 다시 돌려 `ready`가 오면 `READY`가 된다.
+- 통지: `POST /internal/mediamtx/recordings/{processing|ready|failed}`(본문 `path`, `segmentPath`, ready는 `filePath`와 선택 `durationSeconds`). 항상 200이고, 방송이 없거나 삭제됐거나 두 번째 세그먼트면 경고 로그만 남긴다. 같은 통지의 반복과 두 번째 세그먼트는 처음 받은 세그먼트 경로로 가른다. `READY`는 되돌리지 않고, `FAILED`는 `recording-sweeper`가 다시 처리해 `ready`가 오면 `READY`가 된다.
 - ffprobe 길이가 없으면 방송의 `startedAt`~`endedAt`(ENDED가 된 시각)으로 대신한다.
 - 노출: 방송 상세 `recording`(`status`, `url`, `durationSeconds`)에 READY는 모두에게, 처리 중·실패는 스트리머에게만 담는다. 다시보기 목록은 `GET /api/replays`(비로그인 허용, 방송 ID 최신순 커서, 20개).
 - 방송 삭제는 `BroadcastDeleted` 이벤트로 녹화의 `hidden_at`을 채워 숨긴다(파일·행 유지).

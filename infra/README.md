@@ -14,9 +14,10 @@ PC에 Caddy + MediaMTX를 Docker Compose로 띄우고, Cloudflare Quick Tunnel�
 | `Caddyfile` | 로컬 HTTP(:80, 호스트 `HTTP_PORT`) same-origin 라우팅 |
 | `mediamtx.yml` | WHIP/WHEP/HLS, `rec/`·`live/` path 규칙, 녹화와 리먹싱 훅 |
 | `hooks/notify-server.sh` | path 훅(`runOnAvailable`, `runOnUnavailable`)을 Spring `/internal/mediamtx/<이벤트>`로 알림 |
-| `hooks/remux-recording.sh` | 녹화 세그먼트(fMP4)를 faststart MP4로 리먹싱(`-c copy`) |
+| `hooks/remux-recording.sh` | 녹화 세그먼트(fMP4)를 faststart MP4로 리먹싱(`-c copy`). Spring이 `ready`를 받아야 원본을 지운다 |
+| `hooks/sweep-recordings.sh` | `recording-sweeper` 컨테이너 진입점. 1분마다 남은 원본(2분 넘게 안 바뀜, 송출 중 path 제외)에 리먹싱 훅을 다시 돌린다 |
 | `spike/` | 빌드 없는 테스트 페이지(PC 송출, 모바일 송출, 시청, 녹화 목록) |
-| `data/` | 녹화 원본(`data/recordings`)과 리먹싱 결과(`data/vod`). git에 넣지 않는다 |
+| `data/` | 녹화 원본(`data/recordings`)과 리먹싱 결과(`data/vod`). git에 넣지 않는다. 로컬 DB를 초기화하면 `data/recordings`도 비운다(방송 ID가 다시 쓰여 옛 원본이 새 방송에 붙지 않게) |
 
 ### URL
 

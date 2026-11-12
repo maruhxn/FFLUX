@@ -64,6 +64,21 @@ class RecordingTest : BroadcastFlowTest() {
     }
 
     @Test
+    fun `실패한 녹화를 다시 처리해 완료 통지가 오면 READY가 된다`() {
+        val id = endRecorded(register(streamer))
+        processing(id)
+        failed(id)
+        assertEquals("FAILED", recordingOf(id, streamer)?.get("status"))
+
+        // 남은 원본을 다시 처리하면 처리 시작 통지부터 다시 온다.
+        processing(id)
+        assertEquals(HttpStatus.OK, ready(id, duration = 60.0).statusCode)
+
+        assertEquals("READY", recordingOf(id, null)?.get("status"))
+        assertEquals(1, recordingCount(id))
+    }
+
+    @Test
     fun `완료 통지가 처리 시작보다 먼저 와도 READY다`() {
         val id = endRecorded(register(streamer))
 

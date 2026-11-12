@@ -11,7 +11,7 @@
 - `client/`: React + Vite + TypeScript, React Router, TanStack Query, Tailwind CSS. 반응형 SPA 하나로 PC와 모바일을 모두 지원한다(네이티브 앱 없음).
 - `server/`: Kotlin + Spring Boot, Gradle 멀티모듈 모듈러 모놀리스. MySQL 8, Spring Data JPA, Spring Security 세션 + Spring Session JDBC.
 - 미디어: MediaMTX 셀프호스팅. 송출 WHIP, 시청 WHEP(실패 시 HLS 폴백), 녹화 fMP4 → faststart MP4.
-- 배포: GCP VM 1대(서울) + Docker Compose(Spring, MySQL, MediaMTX, Caddy). 프론트는 Vercel(`fflux.kro.kr`), API·미디어는 VM(`api.fflux.kro.kr`)이고, VM의 Caddy가 HTTPS와 라우팅을 맡는다(`/api` → Spring, `/media` → MediaMTX). 프론트는 API를 교차 출처(CORS + 쿠키)로 부른다.
+- 배포: GCP VM 1대(서울) + Docker Compose(Spring, MySQL, MediaMTX, 녹화 다시 처리, Caddy). 프론트는 Vercel(`fflux.kro.kr`), API·미디어는 VM(`api.fflux.kro.kr`)이고, VM의 Caddy가 HTTPS와 라우팅을 맡는다(`/api` → Spring, `/media` → MediaMTX). 프론트는 API를 교차 출처(CORS + 쿠키)로 부른다.
 
 ## 핵심 도메인
 

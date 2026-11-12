@@ -8,6 +8,7 @@
 | `app` | `ghcr.io/maruhxn/fflux-app`(Actions가 `server/Dockerfile`로 빌드) | 없음 |
 | `mysql` | `mysql:8.4` | 없음 |
 | `mediamtx` | `bluenviron/mediamtx:latest-ffmpeg`, 설정은 로컬과 같은 `infra/mediamtx.yml`·`infra/hooks` | 8189 UDP/TCP |
+| `recording-sweeper` | `mediamtx`와 같은 이미지, 진입점 `infra/hooks/sweep-recordings.sh`(남은 녹화 원본을 1분마다 다시 처리) | 없음 |
 
 Caddy는 `DOMAIN`으로 자동 HTTPS를 받고 `/api/*` → Spring, `/media/*` → MediaMTX, `/vod/*` → 녹화 MP4로 보내고 그 밖(`/internal/*` 포함)은 404다. Spring 8080, MySQL, MediaMTX Control API(9997)는 Docker 내부망에만 있다.
 

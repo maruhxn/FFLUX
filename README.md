@@ -208,7 +208,7 @@ cd client && npm run lint && npm test && npm run build
 | 구성 | 위치 |
 |---|---|
 | 프론트 | Vercel(`fflux.kro.kr`), `main` 푸시마다 자동 배포 |
-| API·미디어 | GCP VM 1대(서울) + Docker Compose(Spring, MySQL, MediaMTX, Caddy), `api.fflux.kro.kr` |
+| API·미디어 | GCP VM 1대(서울) + Docker Compose(Spring, MySQL, MediaMTX, 녹화 다시 처리, Caddy), `api.fflux.kro.kr` |
 | CI/CD | GitHub Actions. CI(서버·클라이언트 검사)가 성공하면 CD가 서버·인프라 변경분만 VM에 배포 |
 
 VM 생성, 방화벽, 환경변수, 손 배포·되돌리기 방법은 [`docs/deploy.md`](docs/deploy.md)에 있다. 설계 결정과 그 이유는 [`docs/decisions.md`](docs/decisions.md)에 있다.
