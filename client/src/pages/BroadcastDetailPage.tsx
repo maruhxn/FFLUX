@@ -22,6 +22,7 @@ import { Donation } from '../components/Donation'
 import { DonationHistory } from '../components/DonationHistory'
 import { DonationToast } from '../components/DonationToast'
 import { EndBroadcastButton } from '../components/EndBroadcastButton'
+import { FollowButton } from '../components/FollowButton'
 import { LivePlayer } from '../components/LivePlayer'
 import { StatusBadge } from '../components/StatusBadge'
 import { StreamingTime } from '../components/StreamingTime'
@@ -124,6 +125,7 @@ export function BroadcastDetailPage() {
             <div className="flex items-center gap-3">
               <StreamerAvatar nickname={broadcast.streamerNickname} live={live} />
               <span className="text-lg font-semibold">{broadcast.streamerNickname}</span>
+              <FollowButton streamerId={broadcast.streamerId} />
             </div>
             {isStreamer && (
               <div className="flex flex-wrap gap-2">

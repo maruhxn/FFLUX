@@ -55,7 +55,7 @@ export function formatDuration(totalSeconds: number) {
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${seconds}` : `${minutes}:${seconds}`
 }
 
-const BROADCASTS_KEY = ['broadcasts'] as const
+export const BROADCASTS_KEY = ['broadcasts'] as const
 
 /** 목록 종류: 메인(LIVE), 지난 방송(ENDED), 내 방송(mine). */
 export type BroadcastListKind = 'LIVE' | 'ENDED' | 'mine'

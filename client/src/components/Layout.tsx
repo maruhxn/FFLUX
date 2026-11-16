@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useLogout, useMe } from '../auth/auth'
 import { usePublishSession } from '../broadcast/publishSession'
+import { BroadcastStartAlerts } from './BroadcastStartAlerts'
 
 export function Layout() {
   const { data: me } = useMe()
@@ -97,6 +98,7 @@ export function Layout() {
           <Outlet />
         </main>
       </div>
+      {me && <BroadcastStartAlerts key={me.memberId} />}
     </div>
   )
 }
