@@ -12,9 +12,9 @@ paths:
 
 # 인프라
 
-- GCP Compute Engine VM 1대(서울 `asia-northeast3`, `e2-small` + 스왑 2GB) + Docker Compose: Spring, MySQL 8, MediaMTX(`bluenviron/mediamtx:latest-ffmpeg`, 훅 실행에 셸과 ffmpeg가 필요), 녹화 다시 처리(`recording-sweeper`, MediaMTX와 같은 이미지), Caddy.
+- GCP Compute Engine VM 1대(서울 `asia-northeast3`, `e2-small` + 스왑 2GB) + Docker Compose: Spring, MySQL 8, MediaMTX(`bluenviron/mediamtx:latest-ffmpeg`, 훅 실행에 셸과 ffmpeg가 필요), 녹화 다시 처리(`recording-sweeper`)·썸네일(`thumbnailer`, 둘 다 MediaMTX와 같은 이미지), Caddy.
 - 프론트는 Vercel(`fflux.kro.kr`)이 서빙하고 VM은 API·미디어(`api.fflux.kro.kr`)만 맡는다.
-- Caddy: 자동 HTTPS, `/api/*` → Spring, `/media/*` → MediaMTX(WHIP/WHEP/HLS), 녹화 디렉터리 정적 서빙(Range 지원). `/internal/*`은 라우팅하지 않는다.
+- Caddy: 자동 HTTPS, `/api/*` → Spring, `/media/*` → MediaMTX(WHIP/WHEP/HLS), 녹화 디렉터리 정적 서빙(Range 지원), 썸네일 `/thumbnails/*` 정적 서빙(30초 캐시). `/internal/*`은 라우팅하지 않는다.
 - 호스트에 publish하는 포트: 80/443(Caddy), 8189 UDP/TCP(MediaMTX WebRTC). GCP VPC 방화벽 규칙도 이 포트만 연다. Spring 8080, MySQL, MediaMTX API는 Docker 내부망에만 둔다.
 - MediaMTX 설정 요점
   - `authMethod: http`, `authHTTPAddress`는 Spring `/internal/mediamtx/auth`, `authHTTPExclude`에 `api`.

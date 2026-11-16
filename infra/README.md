@@ -15,9 +15,10 @@ PC에 Caddy + MediaMTX를 Docker Compose로 띄우고, Cloudflare Quick Tunnel�
 | `mediamtx.yml` | WHIP/WHEP/HLS, `rec/`·`live/` path 규칙, 녹화와 리먹싱 훅 |
 | `hooks/notify-server.sh` | path 훅(`runOnAvailable`, `runOnUnavailable`)을 Spring `/internal/mediamtx/<이벤트>`로 알림 |
 | `hooks/remux-recording.sh` | 녹화 세그먼트(fMP4)를 faststart MP4로 리먹싱(`-c copy`). Spring이 `ready`를 받아야 원본을 지운다 |
+| `hooks/capture-thumbnails.sh` | `thumbnailer` 컨테이너 진입점. 30초마다 송출 중 방송 화면을 `data/thumbnails/<경로>.jpg`로 찍는다 |
 | `hooks/sweep-recordings.sh` | `recording-sweeper` 컨테이너 진입점. 1분마다 남은 원본(2분 넘게 안 바뀜, 송출 중 path 제외)에 리먹싱 훅을 다시 돌린다 |
 | `spike/` | 빌드 없는 테스트 페이지(PC 송출, 모바일 송출, 시청, 녹화 목록) |
-| `data/` | 녹화 원본(`data/recordings`)과 리먹싱 결과(`data/vod`). git에 넣지 않는다. 로컬 DB를 초기화하면 `data/recordings`도 비운다(방송 ID가 다시 쓰여 옛 원본이 새 방송에 붙지 않게) |
+| `data/` | 녹화 원본(`data/recordings`)과 리먹싱 결과(`data/vod`). git에 넣지 않는다. 로컬 DB를 초기화하면 `data/recordings`와 `data/thumbnails`도 비운다(방송 ID가 다시 쓰여 옛 원본·썸네일이 새 방송에 붙지 않게) |
 
 ### URL
 
@@ -149,7 +150,7 @@ docker compose -f infra/compose.yml down
 - **WHEP이 휴대폰에서 안 붙음**: `.env`의 `WEBRTC_ADDITIONAL_HOSTS`가 현재 PC IP인지, 같은 와이파이인지, 방화벽·AP 격리 여부를 확인한다. `watch.html`이 자동으로 HLS로 넘어가므로 재생 방식 표시를 꼭 본다.
 - **WHIP 송출 거절**: `overridePublisher: no`라 같은 path에 이미 송출 중이면 거절된다. 다른 path를 쓰거나 기존 송출을 끈다. `rec/`·`live/` 이외의 path도 거절된다.
 - **Chrome 자동 재생 차단**: 재생 버튼을 한 번 더 누른다.
-- **녹화 파일**: 원본은 `infra/data/recordings`, 재생용은 `infra/data/vod`. 지우려면 스택을 내린 뒤 `infra/data`를 지운다.
+- **녹화·썸네일 파일**: 원본은 `infra/data/recordings`, 재생용은 `infra/data/vod`, 썸네일은 `infra/data/thumbnails`. 지우려면 스택을 내린 뒤 `infra/data`를 지운다.
 - **MediaMTX 버전**: `latest-ffmpeg` 태그를 쓴다(스파이크 시점 v1.21.3). 방송 상태 전이 훅은 `runOnAvailable`/`runOnUnavailable`을 쓴다(옛 이름 `runOnReady`/`runOnNotReady`는 이 버전 설정에 없다).
 
 ## 토스페이먼츠 테스트 키 (후원, #21)

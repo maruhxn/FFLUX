@@ -147,7 +147,11 @@ class BroadcastService(
         startedAt = startedAt,
         endedAt = endedAt,
         viewerCount = viewerCount,
+        thumbnailUrl = mediaPath?.let(::thumbnailUrl),
     )
+
+    /** Caddy가 썸네일 디렉터리를 같은 도메인의 `/thumbnails/` 아래로 정적 서빙한다. */
+    private fun thumbnailUrl(mediaPath: String) = "/thumbnails/$mediaPath.jpg"
 
     companion object {
         const val PAGE_SIZE = 20

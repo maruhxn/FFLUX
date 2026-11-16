@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuration, waitsForRecording, type BroadcastDetail, type Recording } from './broadcast'
+import { formatDuration, versionedThumbnailUrl, waitsForRecording, type BroadcastDetail, type Recording } from './broadcast'
 
 describe('formatDuration', () => {
   it('한 시간 미만은 분:초로 쓴다', () => {
@@ -47,5 +47,17 @@ describe('waitsForRecording', () => {
 
   it('끝나지 않은 방송은 기다리지 않는다', () => {
     expect(waitsForRecording(detail('LIVE', null), true)).toBe(false)
+  })
+})
+
+describe('versionedThumbnailUrl', () => {
+  it('목록을 받은 시각을 30초 단위로 붙여 같은 30초 안에서는 주소가 같다', () => {
+    expect(versionedThumbnailUrl('/thumbnails/live/12.jpg', 60_000)).toBe('/thumbnails/live/12.jpg?v=2')
+    expect(versionedThumbnailUrl('/thumbnails/live/12.jpg', 89_999)).toBe('/thumbnails/live/12.jpg?v=2')
+    expect(versionedThumbnailUrl('/thumbnails/live/12.jpg', 90_000)).toBe('/thumbnails/live/12.jpg?v=3')
+  })
+
+  it('썸네일이 없는 방송은 그대로 null이다', () => {
+    expect(versionedThumbnailUrl(null, 90_000)).toBeNull()
   })
 })

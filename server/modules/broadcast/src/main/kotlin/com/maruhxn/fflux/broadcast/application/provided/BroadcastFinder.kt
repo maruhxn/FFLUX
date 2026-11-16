@@ -44,6 +44,11 @@ data class BroadcastResult(
     val endedAt: LocalDateTime?,
     /** LIVE 방송의 지금 시청자 수. LIVE가 아니면 null. */
     val viewerCount: Int?,
+    /**
+     * `thumbnailer`가 송출 중 30초마다 찍는 장면의 주소. 송출 경로가 정해진 방송이면 있고, 끝난 방송은 마지막 장면이다.
+     * 아직 찍지 못했을 수 있어 화면은 이미지 로드 실패를 썸네일 없음으로 본다. 송출을 준비한 적 없으면 null.
+     */
+    val thumbnailUrl: String?,
 )
 
 /**

@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
+import { apiUrl } from '../api/client'
 
 /**
- * 방송·다시보기 목록의 카드. 썸네일 이미지가 아직 없어 16:9 자리에 스트리머 닉네임 첫 글자를 그린다.
+ * 방송·다시보기 목록의 카드. 16:9 자리에 썸네일(송출 중 화면)을 그리고, 없거나 불러오지 못하면 스트리머 닉네임 첫 글자를 그린다.
  * `badges`는 썸네일 왼쪽 위, `corner`는 오른쪽 아래에 얹는다.
  */
 export function BroadcastCard({
@@ -10,6 +11,7 @@ export function BroadcastCard({
   title,
   streamerNickname,
   meta,
+  thumbnailUrl,
   badges,
   corner,
 }: {
@@ -17,14 +19,28 @@ export function BroadcastCard({
   title: string
   streamerNickname: string
   meta?: string
+  thumbnailUrl?: string | null
   badges?: ReactNode
   corner?: ReactNode
 }) {
   const initial = streamerNickname.slice(0, 1)
+  // 썸네일은 아직 찍히지 않았을 수 있다. 불러오지 못한 주소는 기억해 첫 글자 자리로 돌아간다.
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  const showThumbnail = thumbnailUrl && thumbnailUrl !== failedUrl
   return (
     <Link to={to} className="group block space-y-3">
       <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-lg bg-linear-to-br from-brand-900 to-neutral-900 ring-brand-400 transition group-hover:ring-2">
-        <span className="text-5xl font-extrabold text-brand-300/40">{initial}</span>
+        {showThumbnail ? (
+          <img
+            src={apiUrl(thumbnailUrl)}
+            alt=""
+            loading="lazy"
+            onError={() => setFailedUrl(thumbnailUrl)}
+            className="absolute inset-0 size-full object-cover"
+          />
+        ) : (
+          <span className="text-5xl font-extrabold text-brand-300/40">{initial}</span>
+        )}
         {badges && <div className="absolute top-2 left-2 flex items-center gap-1.5">{badges}</div>}
         {corner && <div className="absolute right-2 bottom-2">{corner}</div>}
       </div>

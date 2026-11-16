@@ -18,4 +18,6 @@ data class RecordedBroadcast(
     val title: String,
     val startedAt: LocalDateTime?,
     val endedAt: LocalDateTime?,
+    /** 방송의 마지막 장면(썸네일) 주소. 아직 찍지 못했을 수 있다. */
+    val thumbnailUrl: String?,
 )

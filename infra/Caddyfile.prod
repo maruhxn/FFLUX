@@ -47,6 +47,13 @@
 		file_server
 	}
 
+	# 방송 썸네일(thumbnailer가 30초마다 새로 찍는다)
+	handle_path /thumbnails/* {
+		root * /srv/thumbnails
+		header Cache-Control "public, max-age=30"
+		file_server
+	}
+
 	handle {
 		respond 404
 	}

@@ -24,6 +24,8 @@ data class ReplayResult(
     val durationSeconds: Long?,
     /** 방송이 LIVE가 된 시각(방송 날짜). */
     val startedAt: LocalDateTime?,
+    /** 방송의 마지막 장면(썸네일) 주소. 아직 찍지 못했을 수 있어 화면은 로드 실패를 썸네일 없음으로 본다. */
+    val thumbnailUrl: String?,
 )
 
 /** [nextCursor]가 null이면 마지막 페이지다. */

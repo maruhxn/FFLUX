@@ -1,4 +1,4 @@
-# FFLUX 운영 스택(GCP VM): Spring, MySQL, MediaMTX, 녹화 다시 처리(recording-sweeper), Caddy. 프론트는 Vercel이 서빙한다.
+# FFLUX 운영 스택(GCP VM): Spring, MySQL, MediaMTX, 녹화 다시 처리(recording-sweeper), 썸네일(thumbnailer), Caddy. 프론트는 Vercel이 서빙한다.
 # 배포: main 푸시 때 GitHub Actions가 자동으로 한다(.github/workflows/cd.yml). 손 배포는 저장소 루트에서
 #   git fetch && git checkout --detach origin/main && docker compose pull && docker compose up -d   (docs/deploy.md 참고)
 # 비밀값은 루트 .env에서 읽는다(.env.example 참고). 로컬 개발 스택은 infra/compose.yml이다.
@@ -79,6 +79,19 @@ services:
       - recordings:/recordings
       - vod:/vod
 
+  # 송출 중인 방송의 화면을 30초마다 찍는다(infra/hooks/capture-thumbnails.sh). MediaMTX와 같은 이미지라 ffmpeg가 있다.
+  thumbnailer:
+    image: bluenviron/mediamtx:latest-ffmpeg
+    restart: unless-stopped
+    init: true
+    entrypoint: ["sh", "/hooks/capture-thumbnails.sh"]
+    environment:
+      MEDIAMTX_API_URL: http://mediamtx:9997
+      MEDIAMTX_RTSP_URL: rtsp://mediamtx:8554
+    volumes:
+      - ./infra/hooks:/hooks:ro
+      - thumbnails:/thumbnails
+
   caddy:
     image: caddy:2
     restart: unless-stopped
@@ -94,6 +107,7 @@ services:
     volumes:
       - ./infra/Caddyfile.prod:/etc/caddy/Caddyfile:ro
       - vod:/srv/vod:ro
+      - thumbnails:/srv/thumbnails:ro
       - caddy_data:/data
       - caddy_config:/config
 
@@ -101,5 +115,6 @@ volumes:
   mysql_data:
   recordings:
   vod:
+  thumbnails:
   caddy_data:
   caddy_config:

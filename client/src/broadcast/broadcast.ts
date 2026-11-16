@@ -19,7 +19,23 @@ export type Broadcast = {
   viewerCount: number | null
 }
 
-type BroadcastPage = { items: Broadcast[]; nextCursor: number | null }
+/**
+ * 목록의 방송. [thumbnailUrl]은 송출 중 30초마다 찍는 장면(끝난 방송은 마지막 장면)의 주소이고, 송출을 준비한 적 없으면 null.
+ * 아직 찍지 못했을 수 있어 화면은 이미지 로드 실패를 썸네일 없음으로 본다.
+ */
+export type BroadcastListItem = Broadcast & { thumbnailUrl: string | null }
+
+/** 썸네일은 30초마다 새로 찍힌다. */
+const THUMBNAIL_INTERVAL_MS = 30_000
+
+/**
+ * 목록을 받은 시각을 30초 단위로 주소에 붙인다. 주소가 같으면 브라우저가 이미지를 다시 받지 않으므로, 목록을 다시 읽으면
+ * 새 장면을 받고 앞서 아직 없어서 실패한 썸네일도 다시 시도한다.
+ */
+export const versionedThumbnailUrl = (thumbnailUrl: string | null, fetchedAt: number) =>
+  thumbnailUrl && `${thumbnailUrl}?v=${Math.floor(fetchedAt / THUMBNAIL_INTERVAL_MS)}`
+
+type BroadcastPage = { items: BroadcastListItem[]; nextCursor: number | null }
 
 export type BroadcastForm = { title: string; description: string }
 
@@ -79,6 +95,8 @@ export type Replay = {
   streamerNickname: string
   durationSeconds: number | null
   startedAt: string | null
+  /** 방송의 마지막 장면(썸네일) 주소. */
+  thumbnailUrl: string | null
 }
 
 type ReplayPage = { items: Replay[]; nextCursor: number | null }

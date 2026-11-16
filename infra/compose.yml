@@ -44,6 +44,19 @@ services:
       - ./data/recordings:/recordings
       - ./data/vod:/vod
 
+  # 송출 중인 방송의 화면을 30초마다 찍는다(hooks/capture-thumbnails.sh). MediaMTX와 같은 이미지라 ffmpeg가 있다.
+  thumbnailer:
+    image: bluenviron/mediamtx:latest-ffmpeg
+    restart: unless-stopped
+    init: true
+    entrypoint: ["sh", "/hooks/capture-thumbnails.sh"]
+    environment:
+      MEDIAMTX_API_URL: http://mediamtx:9997
+      MEDIAMTX_RTSP_URL: rtsp://mediamtx:8554
+    volumes:
+      - ./hooks:/hooks:ro
+      - ./data/thumbnails:/thumbnails
+
   caddy:
     image: caddy:2
     restart: unless-stopped
@@ -55,6 +68,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./spike:/srv/spike:ro
       - ./data/vod:/srv/vod:ro
+      - ./data/thumbnails:/srv/thumbnails:ro
       - caddy_data:/data
 
 volumes:

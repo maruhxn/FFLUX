@@ -148,6 +148,16 @@ class RecordingTest : BroadcastFlowTest() {
     }
 
     @Test
+    @Suppress("UNCHECKED_CAST")
+    fun `다시보기 목록은 그 방송의 마지막 장면을 썸네일 주소로 알려 준다`() {
+        val id = endRecorded(register(streamer)).also { ready(it, duration = 60.0) }
+
+        val items = replays(null).body!!["items"] as List<Map<String, Any?>>
+
+        assertEquals("/thumbnails/rec/$id.jpg", items.single()["thumbnailUrl"])
+    }
+
+    @Test
     fun `다시보기 목록은 커서로 20개씩 이어서 읽는다`() {
         val ids = (1..21).map { endRecorded(register(streamer)).also { id -> ready(id, duration = 1.0) } }
 

@@ -18,5 +18,5 @@ class RecordedBroadcastAdapter(
         broadcastFinder.findEnded(broadcastIds).map { it.toRecorded() }
 
     private fun BroadcastResult.toRecorded() =
-        RecordedBroadcast(id, streamerId, streamerNickname, title, startedAt, endedAt)
+        RecordedBroadcast(id, streamerId, streamerNickname, title, startedAt, endedAt, thumbnailUrl)
 }

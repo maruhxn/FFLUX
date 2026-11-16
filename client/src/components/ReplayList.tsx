@@ -1,9 +1,9 @@
-import { formatDateTime, formatDuration, useReplayList } from '../broadcast/broadcast'
+import { formatDateTime, formatDuration, useReplayList, versionedThumbnailUrl } from '../broadcast/broadcast'
 import { BroadcastCard, ThumbnailTag } from './BroadcastCard'
 
 /** 최신순 다시보기 목록. 다음 페이지는 "더 보기"로 읽는다. */
 export function ReplayList() {
-  const { data, error, isPending, hasNextPage, fetchNextPage, isFetchingNextPage } = useReplayList()
+  const { data, error, isPending, hasNextPage, fetchNextPage, isFetchingNextPage, dataUpdatedAt } = useReplayList()
 
   if (isPending) return <p className="text-neutral-400">불러오는 중…</p>
   if (error) return <p className="text-red-400">{error.message}</p>
@@ -21,6 +21,7 @@ export function ReplayList() {
               title={r.title}
               streamerNickname={r.streamerNickname}
               meta={r.startedAt ? formatDateTime(r.startedAt) : undefined}
+              thumbnailUrl={versionedThumbnailUrl(r.thumbnailUrl, dataUpdatedAt)}
               corner={r.durationSeconds !== null && <ThumbnailTag>{formatDuration(r.durationSeconds)}</ThumbnailTag>}
             />
           </li>

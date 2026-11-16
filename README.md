@@ -59,6 +59,7 @@
 2. 플레이어가 바로 재생된다. 처음에는 소리가 꺼져 있으니 "소리 켜기"를 누른다. "전체 화면"도 된다.
 3. 플레이어 왼쪽 아래 표시로 연결 방식(WebRTC/HLS)을 확인한다. WebRTC가 안 되는 네트워크에서는 HLS로 자동 전환된다.
 4. 스트리머가 제목·설명을 수정하면 시청 화면에 바로 반영된다.
+5. 송출을 시작하고 30초쯤 지나 메인 화면을 새로 열면, 방송 카드에 지금 송출 화면이 썸네일로 보인다(30초마다 새로 찍는다). 끝난 방송과 다시보기 카드에는 마지막 장면이 남는다. 썸네일이 아직 없으면 스트리머 닉네임 첫 글자가 보인다.
 
 ### 5. 방송 종료
 
@@ -208,7 +209,7 @@ cd client && npm run lint && npm test && npm run build
 | 구성 | 위치 |
 |---|---|
 | 프론트 | Vercel(`fflux.kro.kr`), `main` 푸시마다 자동 배포 |
-| API·미디어 | GCP VM 1대(서울) + Docker Compose(Spring, MySQL, MediaMTX, 녹화 다시 처리, Caddy), `api.fflux.kro.kr` |
+| API·미디어 | GCP VM 1대(서울) + Docker Compose(Spring, MySQL, MediaMTX, 녹화 다시 처리, 썸네일, Caddy), `api.fflux.kro.kr` |
 | CI/CD | GitHub Actions. CI(서버·클라이언트 검사)가 성공하면 CD가 서버·인프라 변경분만 VM에 배포 |
 
 VM 생성, 방화벽, 환경변수, 손 배포·되돌리기 방법은 [`docs/deploy.md`](docs/deploy.md)에 있다. 설계 결정과 그 이유는 [`docs/decisions.md`](docs/decisions.md)에 있다.

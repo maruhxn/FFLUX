@@ -34,6 +34,13 @@
 		file_server browse
 	}
 
+	# 방송 썸네일(thumbnailer가 30초마다 새로 찍는다)
+	handle_path /thumbnails/* {
+		root * /srv/thumbnails
+		header Cache-Control "public, max-age=30"
+		file_server
+	}
+
 	# 스파이크 테스트 페이지
 	handle {
 		root * /srv/spike
