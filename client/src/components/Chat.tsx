@@ -81,7 +81,7 @@ export function Chat({ broadcastId, streamerId }: { broadcastId: number; streame
             />
           ) : (
             <li key={chat.id} className="break-words">
-              <span className="mr-2 font-semibold text-emerald-300">{chat.authorNickname}</span>
+              <span className="mr-2 font-semibold text-brand-300">{chat.authorNickname}</span>
               <span className="text-neutral-200">{chat.content}</span>
             </li>
           ),
@@ -90,7 +90,7 @@ export function Chat({ broadcastId, streamerId }: { broadcastId: number; streame
       <div className="shrink-0 border-t border-neutral-800 p-3">
         {!me ? (
           <p className="text-sm text-neutral-400">
-            <Link to="/login" className="text-emerald-400 hover:underline">
+            <Link to="/login" className="text-brand-400 hover:underline">
               로그인
             </Link>
             하면 채팅할 수 있습니다.
@@ -149,7 +149,7 @@ function ModeratedChatLine({
       }}
     >
       {isOwn ? (
-        <span className="mr-2 font-semibold text-emerald-300">{chat.authorNickname}</span>
+        <span className="mr-2 font-semibold text-brand-300">{chat.authorNickname}</span>
       ) : (
         <button
           type="button"
@@ -157,7 +157,7 @@ function ModeratedChatLine({
             if (longPressedRef.current) return
             onToggleProfile()
           }}
-          className="mr-2 font-semibold text-emerald-300 hover:underline"
+          className="mr-2 font-semibold text-brand-300 hover:underline"
         >
           {chat.authorNickname}
         </button>
@@ -267,12 +267,12 @@ function ChatForm({ broadcastId }: { broadcastId: number }) {
           onChange={(e) => setContent(e.target.value)}
           maxLength={CHAT_MAX_LENGTH}
           placeholder="채팅을 입력하세요."
-          className="min-w-0 flex-1 rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-emerald-500"
+          className="min-w-0 flex-1 rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-brand-500"
         />
         <button
           type="submit"
           disabled={!content.trim() || post.isPending}
-          className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 disabled:opacity-50"
+          className="rounded-full bg-brand-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
           보내기
         </button>

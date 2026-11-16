@@ -10,6 +10,13 @@ paths:
 - API·미디어는 `api/client.ts`의 `apiUrl`로 API 서버 주소(`VITE_API_ORIGIN`, 운영은 `https://api.fflux.kro.kr`)를 붙여 부른다. 로컬은 비워 두고 Vite 프록시로 같은 출처다. 쿠키 세션에 기대므로 `fetch`는 `credentials: 'include'`, SSE는 `withCredentials`로 연다. 토큰을 브라우저 저장소에 두지 않는다.
 - 화면은 반응형 하나다. 송출 화면만 PC용(화면 공유)과 모바일용(카메라)으로 나눈다.
 
+## 디자인
+
+- 어두운 배경(`neutral-950`) + 보라 강조색. 색은 `index.css`의 `@theme` 이름만 쓴다. 강조는 `brand-*`(버튼 `bg-brand-500 text-white hover:bg-brand-600`, 링크 `text-brand-400`, 입력 포커스 `focus:border-brand-500`), LIVE 표시는 `live`, 오류는 `red-400`, 그 밖의 바탕·글자·테두리는 `neutral-*`다. `indigo-*`, `emerald-*` 같은 색 이름을 화면에 직접 쓰지 않는다. 새 용도의 색이 필요하면 `@theme`에 이름을 먼저 추가한다.
+- 배치: `Layout`이 상단바(메뉴 버튼, 로고, 계정 버튼)와 왼쪽 메뉴를 그린다. 왼쪽 메뉴는 `lg` 이상에서 펼쳐 두고, 그보다 좁은 화면과 방송 상세에서는 메뉴 버튼으로 연다. 메뉴 항목은 `Layout`의 `menuItems`에 추가한다.
+- 방송·다시보기 목록은 `BroadcastCard`(16:9 썸네일 자리 + 닉네임 첫 글자 아바타 + 제목 두 줄)로 그리고, 썸네일 위 표시는 `StatusBadge`·`ThumbnailTag`로 얹는다. 격자는 `gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4`.
+- 모서리는 버튼·입력 `rounded-md`, 카드·패널 `rounded-lg`, 아바타·채팅 입력 `rounded-full`.
+
 ## 송출
 
 - 시작: 녹화 여부를 받는 모달 → `publish-token` 발급 → WHIP 요청(`Authorization: Bearer <token>`).

@@ -1,5 +1,5 @@
-import { Link } from 'react-router'
 import { formatDateTime, formatDuration, useReplayList } from '../broadcast/broadcast'
+import { BroadcastCard, ThumbnailTag } from './BroadcastCard'
 
 /** 최신순 다시보기 목록. 다음 페이지는 "더 보기"로 읽는다. */
 export function ReplayList() {
@@ -13,24 +13,16 @@ export function ReplayList() {
 
   return (
     <div className="space-y-4">
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {items.map((r) => (
           <li key={r.broadcastId}>
-            <Link
+            <BroadcastCard
               to={`/broadcasts/${r.broadcastId}`}
-              className="block space-y-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4 hover:border-neutral-600"
-            >
-              <div className="flex items-center gap-2">
-                {r.durationSeconds !== null && (
-                  <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs font-semibold text-neutral-200 tabular-nums">
-                    {formatDuration(r.durationSeconds)}
-                  </span>
-                )}
-                <span className="truncate text-sm text-neutral-400">{r.streamerNickname}</span>
-              </div>
-              <p className="truncate font-semibold">{r.title}</p>
-              {r.startedAt && <p className="text-xs text-neutral-500">{formatDateTime(r.startedAt)}</p>}
-            </Link>
+              title={r.title}
+              streamerNickname={r.streamerNickname}
+              meta={r.startedAt ? formatDateTime(r.startedAt) : undefined}
+              corner={r.durationSeconds !== null && <ThumbnailTag>{formatDuration(r.durationSeconds)}</ThumbnailTag>}
+            />
           </li>
         ))}
       </ul>

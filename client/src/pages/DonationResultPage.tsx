@@ -48,7 +48,7 @@ function Result({ title, detail, order }: { title: string; detail: string; order
     <div className="mx-auto max-w-md space-y-4 py-10 text-center">
       <h1 className="text-xl font-bold">{title}</h1>
       <p className="text-neutral-300">{detail}</p>
-      <Link to={order ? `/broadcasts/${order.broadcastId}` : '/'} className="inline-block text-emerald-400 hover:underline">
+      <Link to={order ? `/broadcasts/${order.broadcastId}` : '/'} className="inline-block text-brand-400 hover:underline">
         {order ? '방송으로 돌아가기' : '홈으로'}
       </Link>
     </div>

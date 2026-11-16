@@ -52,7 +52,7 @@ function PublishView({ broadcast }: { broadcast: Broadcast }) {
     return (
       <p className="text-neutral-400">
         다른 방송을{' '}
-        <Link to={`/broadcasts/${session.broadcastId}/publish`} className="text-emerald-400 underline">
+        <Link to={`/broadcasts/${session.broadcastId}/publish`} className="text-brand-400 underline">
           송출 중
         </Link>
         입니다. 그 방송을 먼저 종료하세요.
@@ -295,7 +295,7 @@ function PrepareView({ broadcast }: { broadcast: Broadcast }) {
           type="button"
           onClick={start}
           disabled={!capture || starting}
-          className="rounded-md bg-emerald-500 px-5 py-2 font-semibold text-neutral-950 disabled:opacity-50"
+          className="rounded-md bg-brand-500 px-5 py-2 font-semibold text-white disabled:opacity-50"
         >
           송출 시작
         </button>
@@ -409,14 +409,14 @@ function RecordDialog({
           {RECORD_OPTIONS.map((option) => (
             <label
               key={option.label}
-              className="flex cursor-pointer gap-3 rounded-md border border-neutral-700 p-3 has-checked:border-emerald-500 has-checked:bg-emerald-500/10"
+              className="flex cursor-pointer gap-3 rounded-md border border-neutral-700 p-3 has-checked:border-brand-500 has-checked:bg-brand-500/10"
             >
               <input
                 type="radio"
                 name="record"
                 checked={record === option.value}
                 onChange={() => onChange(option.value)}
-                className="mt-1 accent-emerald-500"
+                className="mt-1 accent-brand-500"
               />
               <span className="space-y-0.5 break-keep">
                 <span className="block font-semibold">{option.label}</span>
@@ -432,7 +432,7 @@ function RecordDialog({
           <button
             type="button"
             onClick={onNext}
-            className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950"
+            className="rounded-md bg-brand-500 px-4 py-2 text-sm font-semibold text-white"
           >
             다음
           </button>
@@ -479,7 +479,7 @@ function Switch({ checked, disabled, onChange }: { checked: boolean; disabled: b
         onChange={(e) => onChange(e.target.checked)}
         className="peer sr-only"
       />
-      <span className="relative h-6 w-11 rounded-full bg-neutral-700 transition peer-checked:bg-emerald-500 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-300 after:absolute after:top-0.5 after:left-0.5 after:size-5 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-5" />
+      <span className="relative h-6 w-11 rounded-full bg-neutral-700 transition peer-checked:bg-brand-500 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-300 after:absolute after:top-0.5 after:left-0.5 after:size-5 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-5" />
       {checked ? '켜짐' : '꺼짐'}
     </label>
   )

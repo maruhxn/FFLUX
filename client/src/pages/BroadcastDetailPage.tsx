@@ -130,7 +130,7 @@ export function BroadcastDetailPage() {
                 {broadcast.status === 'READY' && (
                   <Link
                     to={`/broadcasts/${broadcast.id}/publish`}
-                    className="rounded-full bg-emerald-500 px-4 py-1.5 text-sm font-semibold text-neutral-950"
+                    className="rounded-full bg-brand-500 px-4 py-1.5 text-sm font-semibold text-white"
                   >
                     방송 시작
                   </Link>
@@ -189,14 +189,14 @@ function StreamerAvatar({ nickname, live }: { nickname: string; live: boolean })
   return (
     <div className="relative">
       <div
-        className={`flex h-12 w-12 items-center justify-center rounded-full bg-neutral-800 text-lg font-bold text-emerald-300 ${
-          live ? 'ring-2 ring-red-600 ring-offset-2 ring-offset-neutral-950' : ''
+        className={`flex h-12 w-12 items-center justify-center rounded-full bg-neutral-800 text-lg font-bold text-brand-300 ${
+          live ? 'ring-2 ring-live ring-offset-2 ring-offset-neutral-950' : ''
         }`}
       >
         {nickname.slice(0, 1)}
       </div>
       {live && (
-        <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded bg-red-600 px-1 text-[10px] leading-4 font-bold text-white">
+        <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded bg-live px-1 text-[10px] leading-4 font-bold text-white">
           LIVE
         </span>
       )}

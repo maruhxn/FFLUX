@@ -115,7 +115,7 @@ function BroadcastFormView({
           <button
             type="submit"
             disabled={pending}
-            className="rounded-md bg-emerald-500 px-5 py-2 font-semibold text-neutral-950 disabled:opacity-50"
+            className="rounded-md bg-brand-500 px-5 py-2 font-semibold text-white disabled:opacity-50"
           >
             {submitLabel}
           </button>
@@ -126,7 +126,7 @@ function BroadcastFormView({
 }
 
 const INPUT =
-  'w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2.5 text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-emerald-500'
+  'w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2.5 text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-brand-500'
 
 const PUBLISH_GUIDE = 'PC는 화면 공유, 휴대폰은 카메라로 송출하고, 녹화 여부는 방송 시작 때 고릅니다.'
 

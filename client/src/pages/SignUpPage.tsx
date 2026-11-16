@@ -56,7 +56,7 @@ export function SignUpPage() {
         <button
           type="submit"
           disabled={signUp.isPending || login.isPending}
-          className="w-full rounded-md bg-emerald-500 px-3 py-2 font-semibold text-neutral-950 disabled:opacity-50"
+          className="w-full rounded-md bg-brand-500 px-3 py-2 font-semibold text-white disabled:opacity-50"
         >
           가입하기
         </button>

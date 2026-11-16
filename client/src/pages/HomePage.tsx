@@ -21,7 +21,7 @@ export function HomePage() {
             to={t.to}
             aria-current={t.key === tab ? 'page' : undefined}
             className={`-mb-px border-b-2 pb-2 text-lg font-bold ${
-              t.key === tab ? 'border-emerald-400 text-white' : 'border-transparent text-neutral-500 hover:text-neutral-300'
+              t.key === tab ? 'border-brand-400 text-white' : 'border-transparent text-neutral-500 hover:text-neutral-300'
             }`}
           >
             {t.label}

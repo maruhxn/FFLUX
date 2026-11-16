@@ -12,7 +12,7 @@ export function MyBroadcastsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">내 방송</h1>
-        <Link to="/broadcasts/new" className="rounded-md bg-emerald-500 px-3 py-1.5 text-sm font-semibold text-neutral-950">
+        <Link to="/broadcasts/new" className="rounded-md bg-brand-500 px-3 py-1.5 text-sm font-semibold text-white">
           방송 등록
         </Link>
       </div>

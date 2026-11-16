@@ -1,1 +1,16 @@
 @import "tailwindcss";
+
+/* 디자인 기준값. 화면에서는 아래 이름만 쓰고 Tailwind 기본 색 이름(indigo-500 등)을 직접 쓰지 않는다. */
+@theme inline {
+  /* 강조색: 버튼, 링크, 선택 표시, 입력 포커스 */
+  --color-brand-200: var(--color-indigo-200);
+  --color-brand-300: var(--color-indigo-300);
+  --color-brand-400: var(--color-indigo-400);
+  --color-brand-500: var(--color-indigo-500);
+  --color-brand-600: var(--color-indigo-600);
+  --color-brand-800: var(--color-indigo-800);
+  --color-brand-900: var(--color-indigo-900);
+  --color-brand-950: var(--color-indigo-950);
+  /* LIVE 표시 */
+  --color-live: var(--color-red-600);
+}

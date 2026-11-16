@@ -46,8 +46,8 @@ export function StageMessage({ title, detail, action }: { title: string; detail?
   )
 }
 
-/** 화면 자리 안의 흰 알약 버튼 모양. */
-export const STAGE_BUTTON = 'rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-neutral-950 disabled:opacity-50'
+/** 화면 자리 안의 알약 모양 주 버튼. */
+export const STAGE_BUTTON = 'rounded-full bg-brand-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50'
 
 export function Row({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return (

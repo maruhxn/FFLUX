@@ -143,7 +143,7 @@ export function LivePlayer({
         className="h-full w-full object-contain"
       />
 
-      <span className="pointer-events-none absolute top-3 right-3 rounded-md bg-red-600 px-2.5 py-0.5 text-sm font-extrabold tracking-wide text-white sm:text-base">
+      <span className="pointer-events-none absolute top-3 right-3 rounded-md bg-live px-2.5 py-0.5 text-sm font-extrabold tracking-wide text-white sm:text-base">
         LIVE
       </span>
 
@@ -154,7 +154,7 @@ export function LivePlayer({
           <button
             type="button"
             onClick={() => setAttempt((n) => n + 1)}
-            className="rounded-md bg-emerald-500 px-3 py-1.5 text-sm font-semibold text-neutral-950"
+            className="rounded-md bg-brand-500 px-3 py-1.5 text-sm font-semibold text-white"
           >
             다시 연결
           </button>
