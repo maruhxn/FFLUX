@@ -61,6 +61,9 @@ class MemberService(
     @Transactional(readOnly = true)
     override fun findByUsername(username: String): MemberSummary? = findMember(username)?.toSummary()
 
+    @Transactional(readOnly = true)
+    override fun exists(memberId: Long): Boolean = memberRepository.existsById(memberId)
+
     /** 로그인·조회 입력은 형식을 검사하지 않는다. 아이디 형식에 맞지 않으면 없는 회원으로 본다(400이 아니라 401·없음). */
     private fun findMember(username: String): Member? =
         runCatching { Username.of(username) }.getOrNull()?.let(memberRepository::findByUsername)

@@ -11,6 +11,7 @@ dependencies {
     implementation(project(":modules:comment"))
     implementation(project(":modules:chat"))
     implementation(project(":modules:donation"))
+    implementation(project(":modules:follow"))
 
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-validation")

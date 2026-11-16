@@ -8,6 +8,7 @@ import com.maruhxn.fflux.broadcast.domain.BroadcastStatus
 import com.maruhxn.fflux.broadcast.domain.PublishToken
 import com.maruhxn.fflux.common.error.ConflictException
 import com.maruhxn.fflux.common.error.NotFoundException
+import com.maruhxn.fflux.common.event.BroadcastStarted
 import com.maruhxn.fflux.common.event.BroadcastStatusChanged
 import com.maruhxn.fflux.common.event.EventPublisherPort
 import org.slf4j.LoggerFactory
@@ -56,6 +57,7 @@ class BroadcastStatusChangeService(
             if (broadcast.confirmPublishStarted(startedAt ?: LocalDateTime.now(clock))) {
                 log.info("방송 LIVE 전환: id={}", broadcast.id)
                 publishStatusChanged(broadcast)
+                eventPublisher.publish(BroadcastStarted(broadcast.id, broadcast.streamerId, broadcast.streamerNickname, broadcast.title.value))
             }
         } catch (e: ConflictException) {
             log.warn("송출 시작 확인: 전이할 수 없음 id={} status={}", broadcast.id, broadcast.status)

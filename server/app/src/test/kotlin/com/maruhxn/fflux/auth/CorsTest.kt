@@ -24,6 +24,17 @@ class CorsTest : IntegrationTest() {
     }
 
     @Test
+    fun `허용한 프론트 출처의 PUT 사전 요청을 허락한다`() {
+        val response = http.options().uri("/api/streamers/1/follow")
+            .header(HttpHeaders.ORIGIN, TEST_FRONT_ORIGIN)
+            .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "PUT")
+            .retrieve().toBodilessEntity()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(TEST_FRONT_ORIGIN, response.headers.accessControlAllowOrigin)
+    }
+
+    @Test
     fun `허용한 프론트 출처의 요청에는 응답을 읽을 수 있게 출처를 돌려준다`() {
         val response = http.get().uri("/api/broadcasts?status=LIVE")
             .header(HttpHeaders.ORIGIN, TEST_FRONT_ORIGIN)

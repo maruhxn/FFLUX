@@ -10,4 +10,5 @@ include(
     "modules:comment",
     "modules:chat",
     "modules:donation",
+    "modules:follow",
 )
