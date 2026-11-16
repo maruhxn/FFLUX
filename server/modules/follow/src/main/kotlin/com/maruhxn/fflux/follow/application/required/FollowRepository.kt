@@ -13,4 +13,7 @@ interface FollowRepository {
     fun countByStreamerId(streamerId: Long): Long
 
     fun findAllByStreamerId(streamerId: Long): List<Follow>
+
+    /** 최근에 팔로우한 것부터. */
+    fun findAllByFollowerIdOrderByIdDesc(followerId: Long): List<Follow>
 }

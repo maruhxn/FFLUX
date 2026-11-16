@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { openEvents } from '../api/client'
 import { refetchMe } from '../auth/auth'
 import { BROADCASTS_KEY } from '../broadcast/broadcast'
-import { showSystemNotification, type BroadcastStartedAlert } from '../follow/follows'
+import { FOLLOWINGS_KEY, showSystemNotification, type BroadcastStartedAlert } from '../follow/follows'
 
 /** 알림 하나가 떠 있는 시간. */
 const SHOW_MS = 10_000
@@ -27,8 +27,9 @@ export function BroadcastStartAlerts() {
         })
         source.addEventListener('broadcast-started', (e) => {
           const alert = JSON.parse(e.data) as BroadcastStartedAlert
-          // 목록에 새로 LIVE가 된 방송이 보이게 한다.
+          // 방송 목록과 팔로잉 목록에 새로 LIVE가 된 방송이 보이게 한다.
           void queryClient.invalidateQueries({ queryKey: BROADCASTS_KEY })
+          void queryClient.invalidateQueries({ queryKey: FOLLOWINGS_KEY })
           if (showSystemNotification(alert, () => navigate(`/broadcasts/${alert.broadcastId}`))) return
           setAlerts((old) => [...old.filter((it) => it.broadcastId !== alert.broadcastId), alert])
           setTimeout(() => setAlerts((old) => old.filter((it) => it !== alert)), SHOW_MS)
@@ -41,7 +42,7 @@ export function BroadcastStartAlerts() {
 
   if (alerts.length === 0) return null
   return (
-    <div className="fixed inset-x-3 bottom-3 z-40 flex flex-col items-end gap-2 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-80">
+    <div className="fixed inset-x-3 bottom-3 z-40 flex flex-col items-end gap-2 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-96">
       {alerts.map((alert) => (
         <div
           key={alert.broadcastId}

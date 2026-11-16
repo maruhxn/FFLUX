@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation } from 'react-router'
 import { useLogout, useMe } from '../auth/auth'
 import { usePublishSession } from '../broadcast/publishSession'
 import { BroadcastStartAlerts } from './BroadcastStartAlerts'
+import { FollowingList } from './FollowingList'
 
 export function Layout() {
   const { data: me } = useMe()
@@ -22,21 +23,24 @@ export function Layout() {
   ]
 
   const menu = (
-    <nav className="flex flex-col gap-1 p-3 text-sm">
-      {menuItems.map((item) => (
-        <Link
-          key={item.to}
-          to={item.to}
-          onClick={() => setMenuOpen(false)}
-          aria-current={item.active ? 'page' : undefined}
-          className={`rounded-md px-3 py-2 font-medium ${
-            item.active ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:bg-neutral-900 hover:text-neutral-100'
-          }`}
-        >
-          {item.label}
-        </Link>
-      ))}
-    </nav>
+    <>
+      <nav className="flex flex-col gap-1 p-3 text-sm">
+        {menuItems.map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            onClick={() => setMenuOpen(false)}
+            aria-current={item.active ? 'page' : undefined}
+            className={`rounded-md px-3 py-2 font-medium ${
+              item.active ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:bg-neutral-900 hover:text-neutral-100'
+            }`}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+      {me && <FollowingList onNavigate={() => setMenuOpen(false)} />}
+    </>
   )
 
   return (
@@ -87,11 +91,11 @@ export function Layout() {
         )}
       </header>
       <div className={`flex flex-1 ${wide ? 'lg:min-h-0' : ''}`}>
-        {!wide && <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 border-r border-neutral-800 lg:block">{menu}</aside>}
+        {!wide && <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 overflow-y-auto border-r border-neutral-800 lg:block">{menu}</aside>}
         {menuOpen && (
           <div className={`fixed inset-0 top-14 z-20 ${wide ? '' : 'lg:hidden'}`}>
             <button type="button" aria-label="메뉴 닫기" onClick={() => setMenuOpen(false)} className="absolute inset-0 bg-black/60" />
-            <aside className="relative h-full w-56 border-r border-neutral-800 bg-neutral-950">{menu}</aside>
+            <aside className="relative h-full w-56 overflow-y-auto border-r border-neutral-800 bg-neutral-950">{menu}</aside>
           </div>
         )}
         <main className={wide ? 'min-w-0 flex-1 lg:min-h-0' : 'mx-auto w-full max-w-7xl min-w-0 flex-1 px-4 py-6 sm:px-6'}>

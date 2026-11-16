@@ -7,7 +7,23 @@ export type FollowStatus = { followerCount: number; following: boolean }
 /** 회원별 SSE `broadcast-started`: 팔로우한 스트리머의 방송이 LIVE가 됐다. */
 export type BroadcastStartedAlert = { broadcastId: number; streamerNickname: string; title: string }
 
+/** 내가 팔로우한 스트리머. [nickname]은 지금 닉네임이고, [liveBroadcastId]는 방송 중이 아니면 null이다. */
+export type Following = { streamerId: number; nickname: string; liveBroadcastId: number | null }
+
 const followStatusKey = (streamerId: number) => ['follow', streamerId] as const
+export const FOLLOWINGS_KEY = ['followings'] as const
+
+/** 방송이 끝난 것은 알림이 없어서 이 주기로 다시 읽어 따라간다. */
+const FOLLOWINGS_REFRESH_MS = 30_000
+
+/** 내가 팔로우한 스트리머. 방송 중인 스트리머가 먼저, 그 안에서는 최근에 팔로우한 순서다. */
+export function useFollowings() {
+  return useQuery({
+    queryKey: FOLLOWINGS_KEY,
+    queryFn: () => api<Following[]>('/api/me/followings'),
+    refetchInterval: FOLLOWINGS_REFRESH_MS,
+  })
+}
 
 export function useFollowStatus(streamerId: number) {
   return useQuery({
@@ -21,7 +37,10 @@ export function useSetFollow(streamerId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (follow: boolean) => api<void>(`/api/streamers/${streamerId}/follow`, { method: follow ? 'PUT' : 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: followStatusKey(streamerId) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: followStatusKey(streamerId) })
+      void queryClient.invalidateQueries({ queryKey: FOLLOWINGS_KEY })
+    },
   })
 }
 

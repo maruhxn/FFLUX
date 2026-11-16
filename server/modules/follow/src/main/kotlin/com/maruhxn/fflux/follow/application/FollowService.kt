@@ -4,6 +4,7 @@ import com.maruhxn.fflux.common.error.NotFoundException
 import com.maruhxn.fflux.follow.application.provided.FollowFinder
 import com.maruhxn.fflux.follow.application.provided.FollowModifier
 import com.maruhxn.fflux.follow.application.provided.FollowStatusResult
+import com.maruhxn.fflux.follow.application.provided.FollowingResult
 import com.maruhxn.fflux.follow.application.required.FollowRepository
 import com.maruhxn.fflux.follow.application.required.FollowTargetFinder
 import com.maruhxn.fflux.follow.domain.Follow
@@ -41,4 +42,14 @@ class FollowService(
     @Transactional(readOnly = true)
     override fun findFollowerIds(streamerId: Long): List<Long> =
         followRepository.findAllByStreamerId(streamerId).map { it.followerId }
+
+    /** 방송 중 여부는 스트리머마다 한 번씩 본다. 팔로우 수가 적다는 전제다. */
+    @Transactional(readOnly = true)
+    override fun findFollowings(memberId: Long): List<FollowingResult> {
+        val streamerIds = followRepository.findAllByFollowerIdOrderByIdDesc(memberId).map { it.streamerId }
+        val nicknames = followTargetFinder.nicknamesOf(streamerIds)
+        return streamerIds
+            .mapNotNull { id -> nicknames[id]?.let { FollowingResult(id, it, followTargetFinder.liveBroadcastIdOf(id)) } }
+            .sortedBy { it.liveBroadcastId == null }
+    }
 }
