@@ -72,6 +72,8 @@ export function useBroadcastList(kind: BroadcastListKind) {
       return api<BroadcastPage>(`${path}?${params}`)
     },
     getNextPageParam: (last) => last.nextCursor,
+    // 방송 중 목록은 thumbnailer가 새 장면을 찍는 주기마다 다시 읽어 썸네일·시청자 수·새 방송을 따라간다.
+    refetchInterval: kind === 'LIVE' ? THUMBNAIL_INTERVAL_MS : false,
   })
 }
 
