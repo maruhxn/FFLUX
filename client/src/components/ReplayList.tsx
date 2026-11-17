@@ -19,6 +19,7 @@ export function ReplayList() {
             <BroadcastCard
               to={`/broadcasts/${r.broadcastId}`}
               title={r.title}
+              streamerId={r.streamerId}
               streamerNickname={r.streamerNickname}
               meta={r.startedAt ? formatDateTime(r.startedAt) : undefined}
               thumbnailUrl={versionedThumbnailUrl(r.thumbnailUrl, dataUpdatedAt)}

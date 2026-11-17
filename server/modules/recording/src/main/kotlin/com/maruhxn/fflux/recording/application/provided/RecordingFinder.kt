@@ -20,6 +20,7 @@ data class RecordingResult(
 data class ReplayResult(
     val broadcastId: Long,
     val title: String,
+    val streamerId: Long,
     val streamerNickname: String,
     val durationSeconds: Long?,
     /** 방송이 LIVE가 된 시각(방송 날짜). */

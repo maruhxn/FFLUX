@@ -143,6 +143,8 @@ class RecordingTest : BroadcastFlowTest() {
         assertEquals(listOf(latest, replay), items.map { (it["broadcastId"] as Number).toLong() })
         assertEquals("방송", items[0]["title"])
         assertEquals("테스트스트리머", items[0]["streamerNickname"])
+        val streamerId = jdbcTemplate.queryForObject("SELECT id FROM member WHERE username = 'streamer'", Long::class.java)
+        assertEquals(streamerId, (items[0]["streamerId"] as Number?)?.toLong())
         assertEquals(120, items[0]["durationSeconds"])
         assertNull(page.body!!["nextCursor"])
     }

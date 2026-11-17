@@ -27,6 +27,7 @@ export function BroadcastList({ kind, empty, filter }: { kind: BroadcastListKind
             <BroadcastCard
               to={`/broadcasts/${b.id}`}
               title={b.title}
+              streamerId={b.status === 'READY' ? undefined : b.streamerId}
               streamerNickname={b.streamerNickname}
               meta={formatDateTime(b.createdAt)}
               thumbnailUrl={versionedThumbnailUrl(b.thumbnailUrl, dataUpdatedAt)}

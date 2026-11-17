@@ -97,6 +97,7 @@ export const broadcastDetailKey = (id: number) => [...BROADCASTS_KEY, 'detail', 
 export type Replay = {
   broadcastId: number
   title: string
+  streamerId: number
   streamerNickname: string
   durationSeconds: number | null
   startedAt: string | null

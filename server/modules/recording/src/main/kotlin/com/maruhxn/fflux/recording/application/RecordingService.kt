@@ -29,7 +29,7 @@ class RecordingService(
         return ReplayPage(
             items = recordings.mapNotNull { recording ->
                 broadcasts[recording.broadcastId]?.let {
-                    ReplayResult(it.id, it.title, it.streamerNickname, recording.durationSeconds, it.startedAt, it.thumbnailUrl)
+                    ReplayResult(it.id, it.title, it.streamerId, it.streamerNickname, recording.durationSeconds, it.startedAt, it.thumbnailUrl)
                 }
             },
             nextCursor = if (rows.size > PAGE_SIZE) recordings.last().broadcastId else null,
