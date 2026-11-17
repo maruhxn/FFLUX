@@ -60,13 +60,18 @@ const BROADCASTS_KEY = ['broadcasts'] as const
 /** 목록 종류: 메인(LIVE), 지난 방송(ENDED), 내 방송(mine). */
 export type BroadcastListKind = 'LIVE' | 'ENDED' | 'mine'
 
-export function useBroadcastList(kind: BroadcastListKind) {
+/** 공개 목록(LIVE·ENDED)의 조건. [q]는 제목이나 스트리머 닉네임에 든 검색어, [streamerId]는 그 스트리머의 방송만 본다. */
+export type BroadcastListFilter = { q?: string; streamerId?: number }
+
+export function useBroadcastList(kind: BroadcastListKind, filter: BroadcastListFilter = {}) {
   return useInfiniteQuery({
-    queryKey: [...BROADCASTS_KEY, 'list', kind],
+    queryKey: [...BROADCASTS_KEY, 'list', kind, filter],
     initialPageParam: null as number | null,
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams()
       if (kind !== 'mine') params.set('status', kind)
+      if (filter.q) params.set('q', filter.q)
+      if (filter.streamerId !== undefined) params.set('streamerId', String(filter.streamerId))
       if (pageParam !== null) params.set('cursor', String(pageParam))
       const path = kind === 'mine' ? '/api/broadcasts/mine' : '/api/broadcasts'
       return api<BroadcastPage>(`${path}?${params}`)
@@ -112,6 +117,26 @@ export function useReplayList() {
       return api<ReplayPage>(`/api/replays?${params}`)
     },
     getNextPageParam: (last) => last.nextCursor,
+  })
+}
+
+/** 스트리머. [liveBroadcastId]는 지금 방송 중인 방송의 ID이고, 방송 중이 아니면 null이다. */
+export type Streamer = { streamerId: number; nickname: string; liveBroadcastId: number | null }
+
+/** 닉네임에 [q]가 든 스트리머(공개 방송이 있는 회원). 방송 중인 스트리머가 먼저이고 최대 20명이다. */
+export function useStreamerSearch(q: string) {
+  return useQuery({
+    queryKey: [...BROADCASTS_KEY, 'streamers', q],
+    queryFn: () => api<Streamer[]>(`/api/streamers?${new URLSearchParams({ q })}`),
+    enabled: q !== '',
+  })
+}
+
+/** 스트리머 정보. 공개 방송이 없는 회원이면 404다. */
+export function useStreamer(id: number) {
+  return useQuery({
+    queryKey: [...BROADCASTS_KEY, 'streamer', id],
+    queryFn: () => api<Streamer>(`/api/streamers/${id}`),
   })
 }
 

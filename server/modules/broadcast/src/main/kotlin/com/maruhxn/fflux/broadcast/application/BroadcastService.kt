@@ -15,6 +15,7 @@ import com.maruhxn.fflux.broadcast.domain.Broadcast
 import com.maruhxn.fflux.broadcast.domain.BroadcastDescription
 import com.maruhxn.fflux.broadcast.domain.BroadcastStatus
 import com.maruhxn.fflux.broadcast.domain.BroadcastTitle
+import com.maruhxn.fflux.broadcast.domain.SearchKeyword
 import com.maruhxn.fflux.common.error.BadRequestException
 import com.maruhxn.fflux.common.error.NotFoundException
 import com.maruhxn.fflux.common.event.BroadcastDeleted
@@ -97,22 +98,23 @@ class BroadcastService(
         broadcastRepository.findByIdAndDeletedAtIsNull(broadcastId)?.isWatchable() ?: false
 
     @Transactional(readOnly = true)
-    override fun findPublic(status: BroadcastStatus, cursor: Long?): BroadcastPage {
+    override fun findPublic(status: BroadcastStatus, cursor: Long?, streamerId: Long?, keyword: String?): BroadcastPage {
+        val searchKeyword = SearchKeyword.of(keyword)
         if (status == BroadcastStatus.READY) throw BadRequestException("공개 목록은 LIVE 또는 ENDED만 조회할 수 있습니다.")
-        return page(status = status, streamerId = null, cursor = cursor)
+        return page(status = status, streamerId = streamerId, keyword = searchKeyword, cursor = cursor)
     }
 
     @Transactional(readOnly = true)
     override fun findMine(streamerId: Long, cursor: Long?): BroadcastPage =
-        page(status = null, streamerId = streamerId, cursor = cursor)
+        page(status = null, streamerId = streamerId, keyword = null, cursor = cursor)
 
     /** 상태 전이와 순서가 엇갈리지 않도록 행을 잠근다. 스트리머 확인과 상태 조건은 엔티티가 판단한다. */
     private fun findForUpdateOrThrow(broadcastId: Long): Broadcast =
         broadcastRepository.findForUpdate(broadcastId) ?: throw notFound()
 
     /** 한 개를 더 읽어 다음 페이지가 있는지 판단한다. */
-    private fun page(status: BroadcastStatus?, streamerId: Long?, cursor: Long?): BroadcastPage {
-        val rows = broadcastRepository.findPage(status, streamerId, cursor, PAGE_SIZE + 1)
+    private fun page(status: BroadcastStatus?, streamerId: Long?, keyword: SearchKeyword?, cursor: Long?): BroadcastPage {
+        val rows = broadcastRepository.findPage(status, streamerId, keyword?.value, cursor, PAGE_SIZE + 1)
         val items = rows.take(PAGE_SIZE)
         val viewerCounts = viewerCountsOf(items)
         return BroadcastPage(
