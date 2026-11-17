@@ -8,6 +8,9 @@ const ME_KEY = ['me'] as const
 /** 이미 읽어 둔 내 회원 ID. 로그인하지 않았거나 아직 모르면 null. SSE 이벤트가 나에 대한 것인지 볼 때 쓴다. */
 export const cachedMemberId = (queryClient: QueryClient) => queryClient.getQueryData<Me | null>(ME_KEY)?.memberId ?? null
 
+/** 로그인 상태를 다시 읽는다. 세션이 사라졌으면 null이 되어 로그인한 동안만 그리는 화면이 닫힌다. */
+export const refetchMe = (queryClient: QueryClient) => void queryClient.invalidateQueries({ queryKey: ME_KEY })
+
 /** 현재 로그인한 회원. 로그인하지 않았으면 null. */
 export function useMe() {
   return useQuery({

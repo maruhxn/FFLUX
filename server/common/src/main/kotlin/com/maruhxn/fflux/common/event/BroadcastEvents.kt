@@ -8,3 +8,6 @@ data class BroadcastUpdated(val broadcastId: Long, val title: String, val descri
 
 /** 스트리머가 방송을 지웠다(soft delete). 받는 쪽은 그 방송의 녹화·댓글을 숨긴다. */
 data class BroadcastDeleted(val broadcastId: Long)
+
+/** 방송이 LIVE가 됐다. [streamerNickname]과 [title]은 LIVE가 된 시점 값이다. 받는 쪽은 스트리머의 팔로워에게 알린다. */
+data class BroadcastStarted(val broadcastId: Long, val streamerId: Long, val streamerNickname: String, val title: String)

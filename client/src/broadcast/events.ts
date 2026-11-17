@@ -1,35 +1,14 @@
 import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { apiUrl } from '../api/client'
+import { openEvents } from '../api/client'
 import { cachedMemberId } from '../auth/auth'
 import { appendChat, hideChat, refetchChats, setMyRestriction, type ChatMessage } from '../chat/chats'
 import { donationsKey, type DonationAlert } from '../donation/donations'
 import { broadcastDetailKey, type BroadcastDetail, type BroadcastStatus } from './broadcast'
 
-/** 서버가 연결을 오류 응답으로 거절했을 때 다시 열기까지 기다리는 시간. */
-const RECONNECT_MS = 5_000
-
-/**
- * 방송별 SSE를 열고, 닫는 함수를 돌려준다. API 서버의 출처가 달라도 세션 쿠키를 실어 로그인한 시청자로 세게 한다.
- * EventSource는 네트워크가 끊기면 알아서 다시 연결하지만, 오류 응답(배포 중 앱이 내려가 Caddy가 주는 502 등)을 받으면
- * 닫힌 채 다시 연결하지 않는다. 그래서 닫히면 잠시 뒤 새로 연다. [listen]은 새로 열 때마다 불러 리스너를 붙인다.
- */
-export function openBroadcastEvents(id: number, listen: (source: EventSource) => void): () => void {
-  let source: EventSource
-  let retry: ReturnType<typeof setTimeout> | undefined
-  const connect = () => {
-    source = new EventSource(apiUrl(`/api/broadcasts/${id}/events`), { withCredentials: true })
-    listen(source)
-    source.addEventListener('error', () => {
-      if (source.readyState === EventSource.CLOSED) retry = setTimeout(connect, RECONNECT_MS)
-    })
-  }
-  connect()
-  return () => {
-    clearTimeout(retry)
-    source.close()
-  }
-}
+/** 방송별 SSE를 열고, 닫는 함수를 돌려준다. API 서버의 출처가 달라도 세션 쿠키를 실어 로그인한 시청자로 세게 한다. */
+export const openBroadcastEvents = (id: number, listen: (source: EventSource) => void) =>
+  openEvents(`/api/broadcasts/${id}/events`, listen)
 
 /**
  * SSE 이벤트 이름. `broadcast-status`는 {@link BroadcastStatusMessage}, `broadcast-updated`는 `{title, description}`,

@@ -7,4 +7,6 @@ interface MemberRepository {
     fun save(member: Member): Member
     fun findByUsername(username: Username): Member?
     fun existsByUsername(username: Username): Boolean
+    fun existsById(id: Long): Boolean
+    fun findAllByIdIn(ids: Collection<Long>): List<Member>
 }
