@@ -12,7 +12,9 @@ import { EndedBroadcastsPage } from './pages/EndedBroadcastsPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { MyBroadcastsPage } from './pages/MyBroadcastsPage'
+import { SearchPage } from './pages/SearchPage'
 import { SignUpPage } from './pages/SignUpPage'
+import { StreamerPage } from './pages/StreamerPage'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
@@ -31,6 +33,8 @@ const router = createBrowserRouter([
       { path: '/broadcasts/:id/edit', element: <BroadcastEditPage /> },
       { path: '/broadcasts/:id/publish', element: <BroadcastPublishPage /> },
       { path: '/me/broadcasts', element: <MyBroadcastsPage /> },
+      { path: '/search', element: <SearchPage /> },
+      { path: '/streamers/:id', element: <StreamerPage /> },
       { path: '/donations/success', element: <DonationSuccessPage /> },
       { path: '/donations/fail', element: <DonationFailPage /> },
     ],

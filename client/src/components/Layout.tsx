@@ -4,6 +4,7 @@ import { useLogout, useMe } from '../auth/auth'
 import { usePublishSession } from '../broadcast/publishSession'
 import { BroadcastStartAlerts } from './BroadcastStartAlerts'
 import { FollowingList } from './FollowingList'
+import { SearchBox } from './SearchBox'
 
 export function Layout() {
   const { data: me } = useMe()
@@ -62,6 +63,14 @@ export function Layout() {
             FFLUX
           </Link>
         </div>
+        <SearchBox className="hidden max-w-md flex-1 sm:flex" />
+        {/* 좁은 화면은 상단바에 검색창을 둘 자리가 없어 검색 화면(검색창 포함)으로 보낸다. */}
+        <Link to="/search" aria-label="검색" className="ml-auto rounded-md p-2 text-neutral-300 hover:bg-neutral-800 sm:hidden">
+          <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+        </Link>
         {me ? (
           <div className="flex items-center gap-2 text-sm whitespace-nowrap sm:gap-3">
             {publishing && (

@@ -41,4 +41,17 @@ class BroadcastValueTest {
         assertEquals(500, BroadcastDescription.of(" ${"가".repeat(500)} ")?.value?.length)
         assertFailsWith<BadRequestException> { BroadcastDescription.of("가".repeat(501)) }
     }
+
+    @Test
+    fun `검색어는 앞뒤 공백을 지운 값이고 공백뿐이면 검색어가 없는 것이다`() {
+        assertEquals("롤", SearchKeyword.of("  롤  ")?.value)
+        assertNull(SearchKeyword.of(null))
+        assertNull(SearchKeyword.of("   "))
+    }
+
+    @Test
+    fun `검색어는 공백을 지운 뒤 50자까지다`() {
+        assertEquals(50, SearchKeyword.of(" ${"가".repeat(50)} ")?.value?.length)
+        assertFailsWith<BadRequestException> { SearchKeyword.of("가".repeat(51)) }
+    }
 }

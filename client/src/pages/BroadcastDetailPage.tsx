@@ -123,8 +123,18 @@ export function BroadcastDetailPage() {
           </div>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <StreamerAvatar nickname={broadcast.streamerNickname} live={live} />
-              <span className="text-lg font-semibold">{broadcast.streamerNickname}</span>
+              {/* 대기 중 방송만 있는 스트리머의 화면은 404라서, 공개된(LIVE·ENDED) 방송에서만 스트리머 화면으로 잇는다. */}
+              {broadcast.status === 'READY' ? (
+                <div className="flex items-center gap-3">
+                  <StreamerAvatar nickname={broadcast.streamerNickname} live={live} />
+                  <span className="text-lg font-semibold">{broadcast.streamerNickname}</span>
+                </div>
+              ) : (
+                <Link to={`/streamers/${broadcast.streamerId}`} className="group flex items-center gap-3">
+                  <StreamerAvatar nickname={broadcast.streamerNickname} live={live} />
+                  <span className="text-lg font-semibold group-hover:text-brand-200">{broadcast.streamerNickname}</span>
+                </Link>
+              )}
               <FollowButton streamerId={broadcast.streamerId} />
             </div>
             {isStreamer && (

@@ -69,8 +69,12 @@ class BroadcastController(
 
     @PublicApi
     @GetMapping
-    fun list(@RequestParam status: BroadcastStatus, @RequestParam(required = false) cursor: Long?): BroadcastPage =
-        broadcastFinder.findPublic(status, cursor)
+    fun list(
+        @RequestParam status: BroadcastStatus,
+        @RequestParam(required = false) cursor: Long?,
+        @RequestParam(required = false) streamerId: Long?,
+        @RequestParam(required = false) q: String?,
+    ): BroadcastPage = broadcastFinder.findPublic(status, cursor, streamerId, q)
 
     @GetMapping("/mine")
     fun mine(member: LoginMember, @RequestParam(required = false) cursor: Long?): BroadcastPage =

@@ -1,10 +1,17 @@
-import { formatDateTime, formatViewerCount, useBroadcastList, versionedThumbnailUrl, type BroadcastListKind } from '../broadcast/broadcast'
+import {
+  formatDateTime,
+  formatViewerCount,
+  useBroadcastList,
+  versionedThumbnailUrl,
+  type BroadcastListFilter,
+  type BroadcastListKind,
+} from '../broadcast/broadcast'
 import { BroadcastCard, ThumbnailTag } from './BroadcastCard'
 import { StatusBadge } from './StatusBadge'
 
 /** 최신순 방송 목록. 다음 페이지는 "더 보기"로 읽는다. */
-export function BroadcastList({ kind, empty }: { kind: BroadcastListKind; empty: string }) {
-  const { data, error, isPending, hasNextPage, fetchNextPage, isFetchingNextPage, dataUpdatedAt } = useBroadcastList(kind)
+export function BroadcastList({ kind, empty, filter }: { kind: BroadcastListKind; empty: string; filter?: BroadcastListFilter }) {
+  const { data, error, isPending, hasNextPage, fetchNextPage, isFetchingNextPage, dataUpdatedAt } = useBroadcastList(kind, filter)
 
   if (isPending) return <p className="text-neutral-400">불러오는 중…</p>
   if (error) return <p className="text-red-400">{error.message}</p>
@@ -20,6 +27,7 @@ export function BroadcastList({ kind, empty }: { kind: BroadcastListKind; empty:
             <BroadcastCard
               to={`/broadcasts/${b.id}`}
               title={b.title}
+              streamerId={b.status === 'READY' ? undefined : b.streamerId}
               streamerNickname={b.streamerNickname}
               meta={formatDateTime(b.createdAt)}
               thumbnailUrl={versionedThumbnailUrl(b.thumbnailUrl, dataUpdatedAt)}

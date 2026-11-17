@@ -23,8 +23,12 @@ interface BroadcastFinder {
     /** 삭제되지 않은 LIVE 방송인지. 없거나 삭제됐으면 false. */
     fun isLive(broadcastId: Long): Boolean
 
-    /** 메인(LIVE)·지난 방송(ENDED) 목록. READY는 공개 목록이 아니라 400. */
-    fun findPublic(status: BroadcastStatus, cursor: Long?): BroadcastPage
+    /**
+     * 메인(LIVE)·지난 방송(ENDED) 목록. READY는 공개 목록이 아니라 400.
+     * [streamerId]가 있으면 그 스트리머의 방송만, [keyword]가 있으면 제목이나 스트리머 닉네임에 검색어가 든 방송만 담는다.
+     * 공백뿐인 검색어는 없는 것으로 보고, 50자를 넘으면 400.
+     */
+    fun findPublic(status: BroadcastStatus, cursor: Long?, streamerId: Long? = null, keyword: String? = null): BroadcastPage
 
     /** 내 방송 목록. 모든 상태를 담는다. */
     fun findMine(streamerId: Long, cursor: Long?): BroadcastPage
